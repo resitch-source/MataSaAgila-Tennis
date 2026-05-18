@@ -1,0 +1,4573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1810">
+<title>Mata sa Agila — Tennis Tracking & Scoring</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22Mata%20sa%20Agila%22,%22short_name%22:%22MataAgila%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a1810%22,%22theme_color%22:%22%230a1810%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20192%20192%27%3E%3Crect%20width=%27192%27%20height=%27192%27%20fill=%27%230a1810%27/%3E%3Ccircle%20cx=%2796%27%20cy=%2796%27%20r=%2740%27%20fill=%27%23d4ff3a%27/%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+<style>
+  :root {
+    --bg: #0a1810;
+    --bg-2: #122218;
+    --court: #2d6b3f;
+    --court-line: #f4f1e8;
+    --accent: #d4ff3a;
+    --accent-2: #8fb83a;
+    --danger: #ff4757;
+    --text: #f4f1e8;
+    --text-dim: #8a9b8e;
+    --border: rgba(212, 255, 58, 0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    overflow-x: hidden;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse at top, rgba(45,107,63,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(212,255,58,0.05) 0%, transparent 50%);
+  }
+
+  /* HEADER */
+  header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10,24,16,0.85);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 20px rgba(212,255,58,0.4);
+  }
+  .logo-icon::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .logo-text {
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  .logo-text small { display: block; color: var(--text-dim); font-size: 9px; letter-spacing: 3px; }
+  .demo-banner {
+    background: linear-gradient(90deg, rgba(212,255,58,0.08), rgba(212,255,58,0.02));
+    border-bottom: 1px solid var(--border);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+  .demo-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite;
+    flex-shrink: 0;
+  }
+  .demo-banner span:nth-child(2) { flex: 1; }
+  .demo-tag {
+    background: var(--accent);
+    color: var(--bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+  .status-pill {
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 61px;
+    z-index: 99;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-weight: 700;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(212,255,58,0.05);
+  }
+
+  /* PANELS */
+  .panel { display: none; padding: 16px; padding-bottom: 100px; }
+  .panel.active { display: block; }
+
+  /* CAMERA SECTION */
+  .camera-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/10;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  #video, #overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #overlay { pointer-events: none; }
+  .camera-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 20px;
+  }
+  .camera-placeholder svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .calibration-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .cal-corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 2px solid var(--accent);
+    background: rgba(212,255,58,0.2);
+    border-radius: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    box-shadow: 0 0 12px rgba(212,255,58,0.6);
+  }
+  .cal-corner::after {
+    content: attr(data-label);
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .stat-box .label { font-size: 8px; color: var(--text-dim); letter-spacing: 1.5px; }
+  .stat-box .value { font-size: 16px; font-weight: 900; color: var(--accent); margin-top: 2px; }
+
+  /* COURT MAP */
+  .court-map-wrap {
+    margin-top: 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .court-map-wrap h3 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  #courtMap {
+    width: 100%;
+    background: var(--court);
+    border-radius: 6px;
+    display: block;
+  }
+  .last-call {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .last-call .verdict {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 4px;
+  }
+  .last-call .verdict.in { color: var(--accent); }
+  .last-call .verdict.out { color: var(--danger); }
+  .last-call .verdict.idle { color: var(--text-dim); }
+  .last-call .meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; letter-spacing: 1px; }
+
+  /* CONTROLS */
+  .control-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  button.btn {
+    flex: 1;
+    padding: 14px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button.btn:hover, button.btn:active { background: rgba(212,255,58,0.1); border-color: var(--accent); }
+  button.btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  button.btn.primary:active { transform: scale(0.97); }
+  button.btn.danger { color: var(--danger); border-color: rgba(255,71,87,0.3); }
+  button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* SCOREBOARD */
+  .scoreboard {
+    background: linear-gradient(135deg, var(--bg-2) 0%, #0d1f15 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sb-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+  .sb-row {
+    display: grid;
+    grid-template-columns: 1fr 50px 50px 60px;
+    padding: 14px 16px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    gap: 4px;
+  }
+  .sb-row:last-child { border-bottom: none; }
+  .sb-row.serving { background: rgba(212,255,58,0.05); }
+  .sb-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .sb-player .name {
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .serve-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    flex-shrink: 0;
+    opacity: 0;
+  }
+  .sb-row.serving .serve-dot { opacity: 1; }
+  .sb-sets, .sb-games {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+  .sb-cell {
+    width: 22px; height: 22px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+  .sb-point {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sb-row:not(.serving) .sb-point { color: var(--text); }
+  .col-header {
+    text-align: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+  }
+
+  .point-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .point-btn {
+    padding: 18px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .point-btn:active { transform: scale(0.97); background: rgba(212,255,58,0.1); }
+  .point-btn .pb-label { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; }
+  .point-btn .pb-name { font-size: 14px; font-weight: 900; margin-top: 4px; }
+  .point-btn .pb-action { font-size: 10px; color: var(--accent); margin-top: 4px; letter-spacing: 1px; }
+
+  .match-state {
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .ms-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 6px 0;
+    letter-spacing: 1px;
+  }
+  .ms-row span:first-child { color: var(--text-dim); }
+  .ms-row span:last-child { color: var(--accent); font-weight: 700; }
+
+  /* SETUP */
+  .setup-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .setup-card h3 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .setup-card label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    margin-top: 10px;
+  }
+  .setup-card input, .setup-card select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .setup-card input:focus, .setup-card select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio-pill {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-align: center;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .radio-pill.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  .toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%) scale(0.8);
+    background: var(--bg-2);
+    border: 2px solid var(--accent);
+    color: var(--text);
+    padding: 20px 32px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 3px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    z-index: 1000;
+    box-shadow: 0 0 40px rgba(212,255,58,0.4);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  .toast.danger { border-color: var(--danger); box-shadow: 0 0 40px rgba(255,71,87,0.4); }
+
+  .instructions {
+    background: rgba(212,255,58,0.05);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 12px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+  .instructions strong { color: var(--accent); }
+  .instructions ol { padding-left: 20px; margin-top: 6px; }
+  .instructions li { margin: 4px 0; }
+
+  .disclaimer {
+    margin-top: 20px;
+    padding: 12px;
+    background: rgba(255,71,87,0.05);
+    border-left: 3px solid var(--danger);
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+
+  /* HEATMAP */
+  #heatmapCanvas {
+    width: 100%;
+    background: var(--court);
+    border-radius: 6px;
+    display: block;
+  }
+  .shot-bar {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    gap: 10px;
+  }
+  .shot-bar .shot-label {
+    width: 90px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .shot-bar .shot-track {
+    flex: 1;
+    height: 18px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .shot-bar .shot-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 0.4s;
+  }
+  .shot-bar .shot-count {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .zone-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .zone-cell {
+    aspect-ratio: 1;
+    background: var(--bg);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .zone-cell .zone-pct {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  /* HISTORY */
+  .hist-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .hist-item .hi-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .hist-item .hi-players {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .hist-item .hi-date {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .hist-item .hi-score {
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hist-item .hi-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .hi-winner {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-left: 6px;
+  }
+
+  /* TUTORIAL OVERLAY */
+  .tutorial {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,24,16,0.92);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .tutorial.show { display: flex; }
+  .tutorial-card {
+    background: var(--bg-2);
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    padding: 24px 20px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(212,255,58,0.25);
+  }
+  .tutorial-step-num {
+    display: inline-block;
+    width: 36px; height: 36px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 50%;
+    font-weight: 900;
+    font-size: 16px;
+    line-height: 36px;
+    margin-bottom: 12px;
+  }
+  .tutorial h2 {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .tutorial p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .tutorial .visual {
+    width: 100%;
+    height: 160px;
+    margin: 16px 0;
+    background: var(--bg);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .tutorial-progress {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  .tut-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .tut-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+  .tutorial-nav {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .tutorial-nav button {
+    flex: 1;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .tutorial-nav button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .tutorial-nav button:disabled { opacity: 0.3; }
+  .tut-skip {
+    margin-top: 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .tut-skip:hover { color: var(--accent); }
+
+  /* Visual: animated mini-court for tutorial */
+  .mini-court {
+    width: 80%;
+    height: 70%;
+    margin: auto;
+    position: absolute;
+    top: 15%; left: 10%;
+    background: #2d6b3f;
+    border: 2px solid #f4f1e8;
+    border-radius: 4px;
+  }
+  .mini-court::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    height: 2px;
+    background: #fff;
+    transform: translateY(-50%);
+  }
+  .tut-corner-dot {
+    position: absolute;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent);
+    animation: tut-pulse 1.5s infinite;
+  }
+  @keyframes tut-pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+  .tut-arrow {
+    position: absolute;
+    font-size: 24px;
+    color: var(--accent);
+    animation: tut-arrow-move 1.5s infinite;
+  }
+  @keyframes tut-arrow-move {
+    0%,100% { transform: translate(0,0); }
+    50% { transform: translate(10px, 10px); }
+  }
+  .tut-ball {
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #d4ff3a;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(212,255,58,0.8);
+    animation: tut-ball-move 2s infinite ease-in-out;
+  }
+  @keyframes tut-ball-move {
+    0% { left: 20%; top: 30%; }
+    50% { left: 50%; top: 70%; transform: scale(1.4); }
+    100% { left: 80%; top: 30%; }
+  }
+
+  /* DIAGNOSTIC PANEL */
+  .diag-result {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 6px;
+    border-left: 3px solid var(--border);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .diag-result.pass { border-left-color: var(--accent); }
+  .diag-result.warn { border-left-color: #ffb84a; }
+  .diag-result.fail { border-left-color: var(--danger); }
+  .diag-result .diag-name {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .diag-result .diag-status { font-size: 10px; }
+  .diag-result.pass .diag-status { color: var(--accent); }
+  .diag-result.warn .diag-status { color: #ffb84a; }
+  .diag-result.fail .diag-status { color: var(--danger); }
+  .diag-result .diag-detail {
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-size: 10px;
+  }
+  .diag-score {
+    text-align: center;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+  .diag-score .ds-num {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .diag-score .ds-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+  .diag-score.good .ds-num { color: var(--accent); }
+  .diag-score.ok .ds-num { color: #ffb84a; }
+  .diag-score.bad .ds-num { color: var(--danger); }
+  .diag-running {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .diag-running::after {
+    content: '...';
+    animation: diag-dots 1s infinite steps(4);
+    display: inline-block;
+    width: 20px;
+    text-align: left;
+  }
+  @keyframes diag-dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  /* CALIBRATION WIZARD */
+  .wizard-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,24,16,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1500;
+    display: none;
+    flex-direction: column;
+  }
+  .wizard-overlay.show { display: flex; }
+  .wizard-header {
+    background: var(--bg-2);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 16px;
+    flex-shrink: 0;
+  }
+  .wizard-step-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .wstep {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .wstep.done { background: var(--accent); }
+  .wstep.active {
+    background: var(--accent);
+    animation: wstep-pulse 1.5s infinite;
+  }
+  @keyframes wstep-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .wizard-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .wizard-title h2 {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+  .wizard-title .close-x {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .wizard-body {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .wizard-camera {
+    position: absolute;
+    inset: 0;
+  }
+  .wizard-camera video,
+  .wizard-camera canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .wizard-camera .target-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .wizard-target {
+    position: absolute;
+    width: 56px; height: 56px;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+  }
+  .wizard-target::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 24px rgba(212,255,58,0.9), inset 0 0 12px rgba(212,255,58,0.4);
+    animation: target-pulse 1.2s infinite;
+  }
+  .wizard-target::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  @keyframes target-pulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.7; }
+  }
+  .wizard-target .target-label {
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+  }
+  .wizard-target .target-corner {
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-2);
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+  /* Placed corner dots (already done) */
+  .wizard-placed {
+    position: absolute;
+    width: 18px; height: 18px;
+    transform: translate(-50%,-50%);
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(212,255,58,0.7);
+    pointer-events: none;
+  }
+  .wizard-placed .placed-label {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-2);
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+  /* Connecting lines between placed corners */
+  .wizard-trapezoid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* Instruction card */
+  .wizard-instructions {
+    background: var(--bg-2);
+    border-top: 2px solid var(--accent);
+    padding: 16px;
+    flex-shrink: 0;
+  }
+  .wizard-instructions .wi-step-info {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .wizard-instructions .wi-prompt {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .wizard-instructions .wi-prompt strong {
+    color: var(--accent);
+  }
+  .wi-validation {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    display: none;
+  }
+  .wi-validation.show { display: block; }
+  .wi-validation.ok {
+    background: rgba(212,255,58,0.1);
+    border-left: 3px solid var(--accent);
+    color: var(--accent);
+  }
+  .wi-validation.warn {
+    background: rgba(255,184,74,0.1);
+    border-left: 3px solid #ffb84a;
+    color: #ffb84a;
+  }
+  .wi-validation.error {
+    background: rgba(255,71,87,0.1);
+    border-left: 3px solid var(--danger);
+    color: var(--danger);
+  }
+  .wizard-nav {
+    display: flex;
+    gap: 8px;
+  }
+  .wizard-nav button {
+    flex: 1;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .wizard-nav button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .wizard-nav button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Schematic mini-map showing which corner is next */
+  .wizard-schematic {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 70px;
+    height: 50px;
+    background: rgba(10,24,16,0.85);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 4px;
+    z-index: 10;
+  }
+  .ws-court {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: rgba(45,107,63,0.4);
+    border: 1px solid rgba(244,241,232,0.5);
+    border-radius: 2px;
+  }
+  .ws-court::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.5);
+  }
+  .ws-corner {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transform: translate(-50%,-50%);
+  }
+  .ws-corner.target {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: target-pulse 1s infinite;
+  }
+  .ws-corner.done { background: var(--accent-2); }
+  .ws-corner.TL { top: 0; left: 0; }
+  .ws-corner.TR { top: 0; left: 100%; }
+  .ws-corner.BR { top: 100%; left: 100%; }
+  .ws-corner.BL { top: 100%; left: 0; }
+  .ws-label {
+    position: absolute;
+    top: -14px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  /* TV DISPLAY MODE - full screen broadcast view */
+  body.tv-display { background: #000; overflow: hidden; }
+  body.tv-display header,
+  body.tv-display .tabs,
+  body.tv-display .demo-banner,
+  body.tv-display .panel { display: none !important; }
+
+  .tv-stage {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #050a07 0%, #0a1810 50%, #050a07 100%);
+    z-index: 9999;
+    flex-direction: column;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+  }
+  body.tv-display .tv-stage { display: flex; }
+
+  .tv-header {
+    padding: 24px 40px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(212,255,58,0.08), transparent);
+  }
+  .tv-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .tv-brand-icon {
+    width: 56px; height: 56px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 40px rgba(212,255,58,0.5);
+  }
+  .tv-brand-icon::after {
+    content: ''; position: absolute; inset: 14px;
+    border-radius: 50%; background: #050a07;
+  }
+  .tv-brand-icon::before {
+    content: ''; position: absolute; inset: 20px;
+    border-radius: 50%; background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+  .tv-brand-text h1 {
+    font-size: 32px;
+    letter-spacing: 6px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .tv-brand-text small {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    display: block;
+  }
+  .tv-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+  .tv-live-dot {
+    width: 14px; height: 14px;
+    background: #ff4757;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 16px #ff4757;
+  }
+
+  .tv-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 32px;
+    padding: 32px 40px;
+    min-height: 0;
+  }
+  .tv-left { display: flex; flex-direction: column; gap: 24px; }
+  .tv-right { display: flex; flex-direction: column; gap: 20px; }
+
+  /* TV Scoreboard - large */
+  .tv-scoreboard {
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(212,255,58,0.04));
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .tv-sb-head {
+    padding: 14px 28px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+  }
+  .tv-sb-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    padding: 22px 28px;
+    gap: 24px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.3s;
+  }
+  .tv-sb-row:last-child { border-bottom: none; }
+  .tv-sb-row.serving { background: rgba(212,255,58,0.05); }
+  .tv-sb-player {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .tv-serve-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 16px var(--accent);
+    opacity: 0;
+    flex-shrink: 0;
+  }
+  .tv-sb-row.serving .tv-serve-dot { opacity: 1; }
+  .tv-player-name {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+  }
+  .tv-sets-cells, .tv-games-cell, .tv-point-cell {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .tv-cell {
+    min-width: 44px;
+    height: 44px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    padding: 0 10px;
+  }
+  .tv-cell.won { color: var(--accent); }
+  .tv-cell.empty { opacity: 0.25; }
+  .tv-point {
+    min-width: 72px;
+    height: 56px;
+    background: rgba(212,255,58,0.12);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    padding: 0 14px;
+  }
+  .tv-sb-row:not(.serving) .tv-point {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .tv-col-head { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+
+  /* TV Call display - giant verdict */
+  .tv-verdict {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .tv-verdict-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+  }
+  .tv-verdict-text {
+    font-size: 96px;
+    font-weight: 900;
+    letter-spacing: 12px;
+    color: var(--text-dim);
+    transition: color 0.3s;
+  }
+  .tv-verdict-text.in { color: var(--accent); text-shadow: 0 0 30px rgba(212,255,58,0.5); }
+  .tv-verdict-text.out { color: var(--danger); text-shadow: 0 0 30px rgba(255,71,87,0.5); }
+  .tv-verdict-meta {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-top: 10px;
+  }
+
+  /* TV Court map */
+  .tv-court-wrap {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .tv-court-wrap h3 {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  #tvCourtMap {
+    width: 100%;
+    flex: 1;
+    background: var(--court);
+    border-radius: 8px;
+    display: block;
+  }
+
+  /* TV Stats grid */
+  .tv-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .tv-stat {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+  }
+  .tv-stat-val {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .tv-stat-lbl {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  /* TV footer */
+  .tv-footer {
+    padding: 16px 40px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    background: rgba(0,0,0,0.3);
+  }
+  .tv-footer .tv-clock { font-variant-numeric: tabular-nums; color: var(--accent); }
+
+  /* CAST CONTROLS in main app */
+  .cast-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(212,255,58,0.1);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-left: 8px;
+  }
+  .cast-status::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.2s infinite;
+  }
+  .qr-display {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .qr-display canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+  .qr-url {
+    word-break: break-all;
+    font-size: 10px;
+    color: #333;
+    text-align: center;
+    font-family: monospace;
+  }
+
+  /* Connection mode toggle */
+  .conn-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .conn-mode-card {
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 1.4;
+  }
+  .conn-mode-card.active {
+    background: rgba(212,255,58,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .conn-mode-card .cm-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+  .conn-mode-card .cm-title { font-weight: 900; }
+  .conn-mode-card .cm-desc { font-size: 9px; color: var(--text-dim); margin-top: 4px; }
+  .conn-mode-card.active .cm-desc { color: var(--accent); opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div class="logo-text">MATA SA AGILA<small>POWERED BY CYRABELL</small></div>
+  </div>
+  <div class="status-pill" id="statusPill">STANDBY</div>
+</header>
+
+<div class="demo-banner">
+  <span class="demo-dot"></span>
+  <span>DEMO MODE — Mobile Phone Camera</span>
+  <span class="demo-tag">v1.1</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="track">▶ TRACK</div>
+  <div class="tab" data-tab="score">▣ SCORE</div>
+  <div class="tab" data-tab="heatmap">◉ HEAT</div>
+  <div class="tab" data-tab="history">⌛ LOG</div>
+  <div class="tab" data-tab="cast">📺 CAST</div>
+  <div class="tab" data-tab="setup">⚙ SET</div>
+</div>
+
+<!-- TRACK PANEL -->
+<div class="panel active" id="panel-track">
+  <div class="camera-stage" id="cameraStage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div class="calibration-overlay" id="calOverlay"></div>
+    <div class="camera-placeholder" id="placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>
+      </svg>
+      <div style="font-size:12px; letter-spacing:2px;">MOBILE CAMERA — DEMO MODE</div>
+      <div style="font-size:10px; margin-top:6px;">Tap START to engage phone camera</div>
+      <div style="font-size:9px; margin-top:8px; opacity:0.6;">Future: dedicated court-mounted hardware</div>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-box"><div class="label">FPS</div><div class="value" id="statFps">—</div></div>
+    <div class="stat-box"><div class="label">SPEED</div><div class="value" id="statSpeed">—</div></div>
+    <div class="stat-box"><div class="label">BOUNCES</div><div class="value" id="statBounces">0</div></div>
+    <div class="stat-box"><div class="label">SHOT</div><div class="value" id="statShot" style="font-size:11px;">—</div></div>
+  </div>
+
+  <div class="court-map-wrap">
+    <h3>◆ COURT VIEW (TOP-DOWN)</h3>
+    <canvas id="courtMap"></canvas>
+    <div class="last-call">
+      <div class="verdict idle" id="verdict">— READY —</div>
+      <div class="meta" id="verdictMeta">Awaiting first bounce</div>
+    </div>
+  </div>
+
+  <div class="control-row">
+    <button class="btn primary" id="btnStart">▶ START</button>
+    <button class="btn" id="btnCalibrate">◇ CALIBRATE</button>
+    <button class="btn danger" id="btnStop">■ STOP</button>
+  </div>
+  <div class="control-row">
+    <button class="btn" id="btnWizard" style="background:rgba(212,255,58,0.1); border-color:var(--accent); color:var(--accent);">★ CALIBRATION WIZARD (RECOMMENDED)</button>
+  </div>
+  <div class="control-row">
+    <button class="btn" id="btnSendIn">↑ IN → P1</button>
+    <button class="btn" id="btnSendOut">↑ OUT → P2</button>
+  </div>
+  <div class="control-row">
+    <button class="btn" id="btnHelp">? TUTORIAL</button>
+    <button class="btn" id="btnDiagnose">⚡ SELF-TEST</button>
+  </div>
+
+  <!-- DIAGNOSTIC RESULTS (hidden by default) -->
+  <div id="diagPanel" style="display:none; margin-top:16px;">
+    <div class="court-map-wrap">
+      <h3>◆ SELF-DIAGNOSTIC RESULTS</h3>
+      <div id="diagResults"></div>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <strong>HOW TO USE (DEMO):</strong>
+    <ol>
+      <li>This demo uses your <strong>mobile phone camera</strong> as the input source.</li>
+      <li>Mount phone at <strong>baseline or net post</strong>, stable angle.</li>
+      <li>Tap <strong>START</strong> to enable camera.</li>
+      <li>Tap <strong>CALIBRATE</strong>, then drag the 4 yellow dots to the court corners visible on screen.</li>
+      <li>Detection uses ball color (yellow-green). Bright daylight works best.</li>
+      <li>Calls appear on the top-down court map. Send them to scoring with the buttons above.</li>
+    </ol>
+  </div>
+
+  <div class="disclaimer">
+    <strong style="color:var(--danger)">DISCLAIMER:</strong> This is a single-camera approximation, NOT real Hawk-Eye. Professional systems use 10+ synchronized high-speed cameras. Calls here are best-effort and not officiation-grade. Lighting, camera angle, and ball visibility heavily affect accuracy.
+  </div>
+</div>
+
+<!-- SCORE PANEL -->
+<div class="panel" id="panel-score">
+  <div class="scoreboard">
+    <div class="sb-header">
+      <span id="sbMatchLabel">MATCH — BEST OF 3</span>
+      <span id="sbServeNumber">1ST SERVE</span>
+    </div>
+    <div class="sb-row" style="border-bottom:1px solid var(--border); padding: 8px 16px;">
+      <span class="col-header" style="text-align:left;">PLAYER</span>
+      <span class="col-header">SETS</span>
+      <span class="col-header">GAMES</span>
+      <span class="col-header">POINTS</span>
+    </div>
+    <div class="sb-row" id="row-p1">
+      <div class="sb-player">
+        <div class="serve-dot"></div>
+        <div class="name" id="nameP1">PLAYER 1</div>
+      </div>
+      <div class="sb-sets" id="setsP1"></div>
+      <div class="sb-cell" id="gamesP1">0</div>
+      <div class="sb-point" id="pointP1">0</div>
+    </div>
+    <div class="sb-row" id="row-p2">
+      <div class="sb-player">
+        <div class="serve-dot"></div>
+        <div class="name" id="nameP2">PLAYER 2</div>
+      </div>
+      <div class="sb-sets" id="setsP2"></div>
+      <div class="sb-cell" id="gamesP2">0</div>
+      <div class="sb-point" id="pointP2">0</div>
+    </div>
+  </div>
+
+  <div class="point-buttons">
+    <button class="point-btn" id="btnPointP1">
+      <div class="pb-label">AWARD POINT</div>
+      <div class="pb-name" id="pbNameP1">PLAYER 1</div>
+      <div class="pb-action">+1 →</div>
+    </button>
+    <button class="point-btn" id="btnPointP2">
+      <div class="pb-label">AWARD POINT</div>
+      <div class="pb-name" id="pbNameP2">PLAYER 2</div>
+      <div class="pb-action">+1 →</div>
+    </button>
+  </div>
+
+  <div class="control-row">
+    <button class="btn" id="btnUndo">↶ UNDO</button>
+    <button class="btn" id="btnSwitchServe">⇄ SWITCH SERVE</button>
+    <button class="btn danger" id="btnResetMatch">⟲ NEW MATCH</button>
+  </div>
+
+  <div class="match-state">
+    <div class="ms-row"><span>STATUS</span><span id="msStatus">PRE-MATCH</span></div>
+    <div class="ms-row"><span>CURRENT SET</span><span id="msSet">1</span></div>
+    <div class="ms-row"><span>CURRENT GAME</span><span id="msGame">1</span></div>
+    <div class="ms-row"><span>TOTAL POINTS PLAYED</span><span id="msTotal">0</span></div>
+    <div class="ms-row"><span>LAST CALL FROM CAMERA</span><span id="msLastCall">—</span></div>
+  </div>
+</div>
+
+<!-- HEATMAP PANEL -->
+<div class="panel" id="panel-heatmap">
+  <div class="setup-card">
+    <h3>◆ BOUNCE HEATMAP</h3>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px;">
+      Aggregates all bounces from current session. Hotter colors = more frequent landing zones. Useful for spotting deep-vs-short tendencies and crosscourt patterns.
+    </div>
+    <canvas id="heatmapCanvas"></canvas>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ SHOT BREAKDOWN</h3>
+    <div id="shotBreakdown" style="font-size:12px;">
+      <div style="color:var(--text-dim); text-align:center; padding:20px;">No shots tracked yet</div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ ZONE STATISTICS</h3>
+    <div id="zoneStats" style="font-size:12px;">
+      <div style="color:var(--text-dim); text-align:center; padding:20px;">No data yet</div>
+    </div>
+  </div>
+
+  <div class="control-row">
+    <button class="btn" id="btnClearHeat">⟲ CLEAR DATA</button>
+    <button class="btn primary" id="btnExportHeat">↓ EXPORT PNG</button>
+  </div>
+</div>
+
+<!-- HISTORY PANEL -->
+<div class="panel" id="panel-history">
+  <div class="setup-card">
+    <h3>◆ SAVE CURRENT MATCH</h3>
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.6; margin-bottom:10px;">
+      Saves match score, total points, duration, and bounce data to your Google Sheet. Configure the Apps Script URL in <strong style="color:var(--accent)">SET</strong> tab first.
+    </div>
+    <button class="btn primary" id="btnSaveMatch" style="width:100%;">↑ SAVE TO GOOGLE SHEETS</button>
+    <div id="saveStatus" style="margin-top:10px; font-size:11px; color:var(--text-dim);"></div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ MATCH HISTORY (LOCAL)</h3>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px;">
+      Stored on this device. Last 50 matches.
+    </div>
+    <div id="localHistory">
+      <div style="color:var(--text-dim); text-align:center; padding:20px; font-size:11px;">No saved matches yet</div>
+    </div>
+  </div>
+
+  <div class="control-row">
+    <button class="btn" id="btnRefreshHist">↻ REFRESH</button>
+    <button class="btn danger" id="btnClearHist">⟲ CLEAR LOCAL</button>
+  </div>
+</div>
+
+<!-- CAST TO TV PANEL -->
+<div class="panel" id="panel-cast">
+  <div class="setup-card">
+    <h3>◆ DISPLAY ON SMART TV</h3>
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.6; margin-bottom:12px;">
+      Broadcast the scoreboard, court map, and live verdicts to a Smart TV. Choose connection mode:
+    </div>
+    <div class="conn-modes">
+      <div class="conn-mode-card active" data-mode="qr">
+        <span class="cm-icon">📲</span>
+        <div class="cm-title">QR + LOCAL</div>
+        <div class="cm-desc">Same device/network sync</div>
+      </div>
+      <div class="conn-mode-card" data-mode="cloud">
+        <span class="cm-icon">☁️</span>
+        <div class="cm-title">CLOUD RELAY</div>
+        <div class="cm-desc">Cross-device over internet</div>
+      </div>
+      <div class="conn-mode-card" data-mode="cast">
+        <span class="cm-icon">📡</span>
+        <div class="cm-title">SCREEN MIRROR</div>
+        <div class="cm-desc">AirPlay / Chromecast / native</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR CODE MODE -->
+  <div class="setup-card" id="qrModePanel">
+    <h3>◆ STEP 1 — OPEN ON YOUR TV</h3>
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.7;">
+      Use your <strong style="color:var(--accent)">Smart TV browser</strong> (Samsung Tizen, LG webOS, Android TV) or open the URL below on any device connected to the TV:
+    </div>
+    <div class="qr-display">
+      <canvas id="qrCanvas" width="240" height="240"></canvas>
+      <div class="qr-url" id="qrUrl">—</div>
+    </div>
+    <button class="btn" id="btnCopyTvUrl" style="width:100%;">📋 COPY TV URL</button>
+    <div class="instructions" style="margin-top:10px;">
+      <strong>OPTIONS TO OPEN ON TV:</strong>
+      <ol>
+        <li><strong>TV Browser:</strong> Scan QR with TV's camera or paste URL in browser app</li>
+        <li><strong>Casting device:</strong> Open URL on a Chromecast/Fire Stick browser</li>
+        <li><strong>Laptop → TV:</strong> Open URL on laptop, then HDMI to TV</li>
+        <li><strong>Screen mirror:</strong> Open URL on a 2nd phone, then mirror that phone to TV</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- CLOUD RELAY MODE -->
+  <div class="setup-card" id="cloudModePanel" style="display:none;">
+    <h3>◆ CLOUD RELAY (CROSS-DEVICE)</h3>
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.7; margin-bottom:10px;">
+      Broadcasts your match to <strong style="color:var(--accent)">any device, anywhere on the internet</strong> via a WebSocket relay. Phone and TV do not need to be on the same network.
+    </div>
+    <label>Relay Provider</label>
+    <div class="radio-group" data-group="relay">
+      <div class="radio-pill active" data-value="piesocket">PIESOCKET</div>
+      <div class="radio-pill" data-value="custom">CUSTOM URL</div>
+    </div>
+
+    <div id="piesocketConfig">
+      <label>PieSocket API Key (free at piesocket.com)</label>
+      <input type="text" id="inPieKey" placeholder="paste your API key here" autocomplete="off">
+      <label>Room Code (any unique word; shared between phone & TV)</label>
+      <input type="text" id="inRoomCode" placeholder="e.g., iligan-court-1" maxlength="40">
+    </div>
+
+    <div id="customConfig" style="display:none;">
+      <label>Custom WebSocket URL (wss://...)</label>
+      <input type="text" id="inCustomWs" placeholder="wss://your-relay.example.com/room/abc" autocomplete="off">
+    </div>
+
+    <button class="btn primary" id="btnCloudConnect" style="width:100%; margin-top:10px;">⚡ CONNECT TO RELAY</button>
+    <div id="cloudStatus" style="margin-top:10px; padding:10px; background:var(--bg); border-radius:6px; font-size:11px; color:var(--text-dim);">
+      ⊘ Not connected
+    </div>
+
+    <div id="cloudQrSection" style="display:none; margin-top:14px;">
+      <label style="margin-bottom:8px;">Scan or open this URL on your TV</label>
+      <div class="qr-display">
+        <canvas id="qrCanvasCloud" width="240" height="240"></canvas>
+        <div class="qr-url" id="qrUrlCloud">—</div>
+      </div>
+      <button class="btn" id="btnCopyCloudUrl" style="width:100%;">📋 COPY CLOUD URL</button>
+    </div>
+
+    <div class="instructions" style="margin-top:12px;">
+      <strong>FREE SETUP — 2 MINUTES:</strong>
+      <ol>
+        <li>Visit <strong>piesocket.com</strong> → sign up (free)</li>
+        <li>Dashboard → API Keys → copy your <strong>API Key</strong></li>
+        <li>Paste above. Pick any room code (same on both devices)</li>
+        <li>Tap CONNECT. Then scan the QR on your TV's browser</li>
+        <li>Free tier allows ~100 concurrent connections, plenty for a match</li>
+      </ol>
+      <div style="margin-top:8px; padding:8px; background:rgba(255,184,74,0.08); border-left:3px solid #ffb84a; border-radius:4px; font-size:10px;">
+        <strong style="color:#ffb84a;">PRIVACY:</strong> Score and bounce data goes through PieSocket servers. No personal info is sent. Use a private room code to prevent eavesdropping.
+      </div>
+    </div>
+  </div>
+
+  <!-- NATIVE CAST MODE -->
+  <div class="setup-card" id="castModePanel" style="display:none;">
+    <h3>◆ SCREEN MIRROR YOUR PHONE</h3>
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.7;">
+      Use your phone's built-in mirroring to send the entire screen (including this app) to your TV:
+    </div>
+    <div style="margin-top:12px; display:grid; gap:8px;">
+      <div style="background:var(--bg); padding:10px 12px; border-radius:8px; border-left:3px solid var(--accent);">
+        <strong style="color:var(--accent); font-size:11px;">📱 iPhone → Apple TV / AirPlay</strong>
+        <div style="font-size:10px; color:var(--text-dim); margin-top:4px; line-height:1.5;">
+          Control Center → Screen Mirroring → select TV
+        </div>
+      </div>
+      <div style="background:var(--bg); padding:10px 12px; border-radius:8px; border-left:3px solid var(--accent);">
+        <strong style="color:var(--accent); font-size:11px;">📱 Android → Chromecast</strong>
+        <div style="font-size:10px; color:var(--text-dim); margin-top:4px; line-height:1.5;">
+          Quick Settings → Screen Cast → select Chromecast / Google TV
+        </div>
+      </div>
+      <div style="background:var(--bg); padding:10px 12px; border-radius:8px; border-left:3px solid var(--accent);">
+        <strong style="color:var(--accent); font-size:11px;">📱 Android → Samsung / LG TV</strong>
+        <div style="font-size:10px; color:var(--text-dim); margin-top:4px; line-height:1.5;">
+          Quick Settings → Smart View / Screen Mirroring → select TV
+        </div>
+      </div>
+      <div style="background:var(--bg); padding:10px 12px; border-radius:8px; border-left:3px solid var(--accent);">
+        <strong style="color:var(--accent); font-size:11px;">🖥 Browser → Chromecast</strong>
+        <div style="font-size:10px; color:var(--text-dim); margin-top:4px; line-height:1.5;">
+          Chrome menu (⋮) → Cast → select device → "Cast tab"
+        </div>
+      </div>
+    </div>
+    <button class="btn primary" id="btnTryNativeCast" style="width:100%; margin-top:14px;">📡 TRY BROWSER CAST API</button>
+    <div id="nativeCastStatus" style="margin-top:8px; font-size:10px; color:var(--text-dim);"></div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ STEP 2 — CHOOSE DISPLAY MODE</h3>
+    <div class="radio-group" data-group="displaymode">
+      <div class="radio-pill active" data-value="extend">EXTEND</div>
+      <div class="radio-pill" data-value="mirror">MIRROR</div>
+    </div>
+    <div style="font-size:10px; color:var(--text-dim); line-height:1.6; margin-top:10px;">
+      <strong style="color:var(--accent)">EXTEND:</strong> TV shows large scoreboard + court map. Phone keeps camera controls.<br>
+      <strong style="color:var(--accent)">MIRROR:</strong> TV shows the same view as phone (use phone screen-mirror feature).
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ STEP 3 — CONNECTION STATUS</h3>
+    <div id="castStatus" style="font-size:12px; line-height:1.6; padding: 10px; background:var(--bg); border-radius:8px;">
+      <div style="color:var(--text-dim);">⊘ No TV connected yet</div>
+    </div>
+    <div style="font-size:10px; color:var(--text-dim); margin-top:10px; line-height:1.5;">
+      Once TV is showing the broadcast page, every score update, bounce, and verdict on this phone instantly appears on the TV — same network, no app install.
+    </div>
+  </div>
+
+  <div class="control-row">
+    <button class="btn" id="btnTestBroadcast">⚡ SEND TEST PING</button>
+    <button class="btn primary" id="btnOpenPreview">▶ PREVIEW ON THIS DEVICE</button>
+  </div>
+
+  <div class="disclaimer">
+    <strong style="color:var(--accent)">HOW IT WORKS:</strong> The TV opens the same web app with <code>?display=tv</code> in the URL. The phone broadcasts score + bounce events via the browser's BroadcastChannel API (same-origin, same-network). Works on any Smart TV with a built-in browser. Zero servers, zero app installs.
+  </div>
+</div>
+
+<!-- SETUP PANEL -->
+<div class="panel" id="panel-setup">
+  <div class="setup-card">
+    <h3>◆ PLAYERS</h3>
+    <label>Player 1 Name</label>
+    <input type="text" id="inP1" value="Player 1" maxlength="20">
+    <label>Player 2 Name</label>
+    <input type="text" id="inP2" value="Player 2" maxlength="20">
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ MATCH FORMAT</h3>
+    <label>Sets to Win Match</label>
+    <div class="radio-group" data-group="format">
+      <div class="radio-pill active" data-value="3">BEST OF 3</div>
+      <div class="radio-pill" data-value="5">BEST OF 5</div>
+      <div class="radio-pill" data-value="1">SINGLE SET</div>
+    </div>
+    <label>Tiebreak at 6-6?</label>
+    <div class="radio-group" data-group="tiebreak">
+      <div class="radio-pill active" data-value="yes">YES</div>
+      <div class="radio-pill" data-value="no">NO (ADV SET)</div>
+    </div>
+    <label>Final Set Format</label>
+    <div class="radio-group" data-group="finalset">
+      <div class="radio-pill active" data-value="standard">STANDARD</div>
+      <div class="radio-pill" data-value="super">10-PT SUPER</div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ DETECTION TUNING</h3>
+    <label>Ball Color Sensitivity (<span id="senseVal">35</span>)</label>
+    <input type="range" id="senseRange" min="10" max="80" value="35">
+    <label>Minimum Ball Size (px) (<span id="minSizeVal">3</span>)</label>
+    <input type="range" id="minSizeRange" min="1" max="20" value="3">
+    <label>Camera Facing</label>
+    <div class="radio-group" data-group="facing">
+      <div class="radio-pill active" data-value="environment">REAR</div>
+      <div class="radio-pill" data-value="user">FRONT</div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ GOOGLE SHEETS BACKEND</h3>
+    <div style="font-size:10px; color:var(--text-dim); line-height:1.6; margin-bottom:8px;">
+      Deploy an Apps Script Web App with <code style="color:var(--accent);">doGet(e)</code> that writes <code style="color:var(--accent);">e.parameter</code> to a sheet. Paste the URL below.
+    </div>
+    <label>Apps Script Web App URL</label>
+    <input type="text" id="inSheetsUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    <label>Tournament / Session Label</label>
+    <input type="text" id="inSessionLabel" placeholder="e.g., Iligan Club Sat AM" maxlength="40">
+    <button class="btn" id="btnTestSheets" style="margin-top:10px; width:100%;">⚡ TEST CONNECTION</button>
+    <div id="sheetsStatus" style="margin-top:8px; font-size:10px; color:var(--text-dim);"></div>
+  </div>
+
+  <div class="setup-card">
+    <h3>◆ ABOUT</h3>
+    <div style="font-size:11px; line-height:1.7; color:var(--text-dim);">
+      <strong style="color:var(--accent)">MATA SA AGILA v1.1</strong><br>
+      <em>Cebuano: "Eye of the Eagle"</em><br>
+      Powered by <strong style="color:var(--accent)">CYRABELL</strong><br><br>
+      Single-camera tennis ball tracking, scoring engine, shot classification & heatmap analytics.<br><br>
+      <strong>INPUT (DEMO):</strong> Mobile phone camera. Production roadmap includes dedicated multi-camera court rig.<br><br>
+      <strong>METHOD:</strong> Real-time HSV color segmentation isolates the ball; trajectory smoothing identifies bounces; 4-point homography maps screen coords to top-down court. Shot type is classified from approach angle, arc shape & post-bounce velocity. Heatmap uses Gaussian-blur accumulation over court space.<br><br>
+      <strong>BACKEND:</strong> Google Apps Script + Google Sheets (GET-based, zero auth).<br><br>
+      <strong>BUILT FOR:</strong> Practice sessions, club matches, training analysis. NOT a substitute for ITF-certified line-calling systems.
+    </div>
+  </div>
+</div>
+
+<!-- TV BROADCAST VIEW (rendered when ?display=tv) -->
+<div class="tv-stage" id="tvStage">
+  <div class="tv-header">
+    <div class="tv-brand">
+      <div class="tv-brand-icon"></div>
+      <div class="tv-brand-text">
+        <h1>MATA SA AGILA</h1>
+        <small>POWERED BY CYRABELL  •  LIVE TENNIS DISPLAY</small>
+      </div>
+    </div>
+    <div class="tv-status">
+      <div class="tv-live-dot"></div>
+      <span id="tvLiveStatus">LIVE</span>
+    </div>
+  </div>
+
+  <div class="tv-body">
+    <div class="tv-left">
+      <div class="tv-scoreboard">
+        <div class="tv-sb-head">
+          <span id="tvMatchLabel">MATCH</span>
+          <span id="tvServeLabel">SERVE</span>
+        </div>
+        <div class="tv-sb-row" style="padding: 10px 28px;">
+          <span class="tv-col-head">PLAYER</span>
+          <span class="tv-col-head" style="text-align:center;">SETS</span>
+          <span class="tv-col-head" style="text-align:center;">GAMES</span>
+          <span class="tv-col-head" style="text-align:center;">POINT</span>
+        </div>
+        <div class="tv-sb-row" id="tvRowP1">
+          <div class="tv-sb-player">
+            <div class="tv-serve-dot"></div>
+            <div class="tv-player-name" id="tvNameP1">Player 1</div>
+          </div>
+          <div class="tv-sets-cells" id="tvSetsP1"></div>
+          <div class="tv-games-cell"><div class="tv-cell" id="tvGamesP1">0</div></div>
+          <div class="tv-point-cell"><div class="tv-point" id="tvPointP1">0</div></div>
+        </div>
+        <div class="tv-sb-row" id="tvRowP2">
+          <div class="tv-sb-player">
+            <div class="tv-serve-dot"></div>
+            <div class="tv-player-name" id="tvNameP2">Player 2</div>
+          </div>
+          <div class="tv-sets-cells" id="tvSetsP2"></div>
+          <div class="tv-games-cell"><div class="tv-cell" id="tvGamesP2">0</div></div>
+          <div class="tv-point-cell"><div class="tv-point" id="tvPointP2">0</div></div>
+        </div>
+      </div>
+
+      <div class="tv-verdict">
+        <div class="tv-verdict-label">LATEST CALL</div>
+        <div class="tv-verdict-text" id="tvVerdict">—</div>
+        <div class="tv-verdict-meta" id="tvVerdictMeta">Awaiting first bounce</div>
+      </div>
+    </div>
+
+    <div class="tv-right">
+      <div class="tv-stats">
+        <div class="tv-stat"><div class="tv-stat-val" id="tvStatBounces">0</div><div class="tv-stat-lbl">BOUNCES</div></div>
+        <div class="tv-stat"><div class="tv-stat-val" id="tvStatIn">0</div><div class="tv-stat-lbl">IN CALLS</div></div>
+        <div class="tv-stat"><div class="tv-stat-val" id="tvStatOut">0</div><div class="tv-stat-lbl">OUT CALLS</div></div>
+      </div>
+      <div class="tv-court-wrap">
+        <h3>◆ COURT VIEW</h3>
+        <canvas id="tvCourtMap"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="tv-footer">
+    <span>SESSION • <span id="tvSession">—</span></span>
+    <span class="tv-clock" id="tvClock">00:00:00</span>
+    <span>MATA SA AGILA v1.1 • POWERED BY CYRABELL</span>
+  </div>
+</div>
+
+<!-- CALIBRATION WIZARD -->
+<div class="wizard-overlay" id="wizard">
+  <div class="wizard-header">
+    <div class="wizard-step-bar" id="wizStepBar"></div>
+    <div class="wizard-title">
+      <h2 id="wizTitle">CALIBRATION WIZARD</h2>
+      <button class="close-x" id="wizClose">✕</button>
+    </div>
+  </div>
+  <div class="wizard-body">
+    <div class="wizard-camera" id="wizCamera">
+      <video id="wizVideo" autoplay playsinline muted></video>
+      <canvas class="wizard-trapezoid" id="wizTrapezoid"></canvas>
+      <div class="target-overlay" id="wizTargetOverlay"></div>
+      <div class="wizard-schematic" id="wizSchematic" style="display:none;">
+        <div class="ws-label">PLACE NEXT:</div>
+        <div class="ws-court">
+          <div class="ws-corner TL" data-c="TL"></div>
+          <div class="ws-corner TR" data-c="TR"></div>
+          <div class="ws-corner BR" data-c="BR"></div>
+          <div class="ws-corner BL" data-c="BL"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wizard-instructions">
+    <div class="wi-step-info" id="wizStepInfo">STEP 1 OF 7</div>
+    <div class="wi-prompt" id="wizPrompt">Loading...</div>
+    <div class="wi-validation" id="wizValidation"></div>
+    <div class="wizard-nav">
+      <button id="wizBack">◂ BACK</button>
+      <button id="wizForward" class="primary">CONTINUE ▸</button>
+    </div>
+  </div>
+</div>
+
+<!-- TUTORIAL OVERLAY -->
+<div class="tutorial" id="tutorial">
+  <div class="tutorial-card">
+    <div class="tutorial-step-num" id="tutNum">1</div>
+    <h2 id="tutTitle">WELCOME</h2>
+    <div class="visual" id="tutVisual"></div>
+    <p id="tutBody">Loading...</p>
+    <div class="tutorial-progress" id="tutProgress"></div>
+    <div class="tutorial-nav">
+      <button id="tutPrev">◂ BACK</button>
+      <button id="tutNext" class="primary">NEXT ▸</button>
+    </div>
+    <div class="tut-skip" id="tutSkip">SKIP TUTORIAL ✕</div>
+  </div>
+</div>
+
+<div class="toast" id="toast">CALL</div>
+
+<script>
+// ============================================================
+// MATA SA AGILA — Tennis Tracking & Scoring Engine
+// Powered by Cyrabell  •  Demo input: Mobile Phone Camera
+// ============================================================
+
+// ----- TV DISPLAY MODE DETECTION -----
+const urlParams = new URLSearchParams(window.location.search);
+const TV_DISPLAY_MODE = urlParams.get('display') === 'tv';
+const TV_SESSION_ID = urlParams.get('session') || 'default';
+
+// ----- STATE -----
+const state = {
+  // Camera/tracking
+  stream: null,
+  tracking: false,
+  calibrating: false,
+  facingMode: 'environment',
+  // Court calibration (image-space coords of 4 corners, normalized 0-1)
+  corners: { TL:{x:0.1,y:0.2}, TR:{x:0.9,y:0.2}, BR:{x:0.95,y:0.95}, BL:{x:0.05,y:0.95} },
+  // Detection
+  sensitivity: 35,
+  minBallSize: 3,
+  lastBallPos: null,
+  ballTrail: [],
+  bounces: [],
+  callCount: 0,
+  lastVerdict: null,
+  // Shot classification
+  shots: [],  // { type, speed, courtPos, t }
+  shotCounts: { forehand:0, backhand:0, serve:0, volley:0, lob:0, smash:0 },
+  lastShotType: null,
+  // Performance
+  frameCount: 0,
+  fpsLastTime: 0,
+  fps: 0,
+  // Scoring
+  match: null,
+  history: [],
+  matchStartTime: null,
+  // Backend
+  sheetsUrl: localStorage.getItem('msa_sheets_url') || localStorage.getItem('feph_sheets_url') || '',
+  sessionLabel: localStorage.getItem('msa_session') || localStorage.getItem('feph_session') || '',
+};
+
+// ----- DOM -----
+const $ = id => document.getElementById(id);
+const video = $('video');
+const overlay = $('overlay');
+const courtMap = $('courtMap');
+const placeholder = $('placeholder');
+const calOverlay = $('calOverlay');
+
+// ----- TABS -----
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// ----- RADIO PILLS -----
+document.querySelectorAll('.radio-group').forEach(g => {
+  g.addEventListener('click', e => {
+    const pill = e.target.closest('.radio-pill');
+    if (!pill) return;
+    g.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    handleSetting(g.dataset.group, pill.dataset.value);
+  });
+});
+
+function handleSetting(group, value) {
+  if (group === 'facing') { state.facingMode = value; if (state.tracking) { stopCamera(); startCamera(); } }
+  if (group === 'format' || group === 'tiebreak' || group === 'finalset') {
+    initMatch();
+  }
+}
+
+$('senseRange').addEventListener('input', e => {
+  state.sensitivity = +e.target.value;
+  $('senseVal').textContent = e.target.value;
+});
+$('minSizeRange').addEventListener('input', e => {
+  state.minBallSize = +e.target.value;
+  $('minSizeVal').textContent = e.target.value;
+});
+$('inP1').addEventListener('input', e => { if (state.match) { state.match.players[0].name = e.target.value || 'Player 1'; renderScore(); }});
+$('inP2').addEventListener('input', e => { if (state.match) { state.match.players[1].name = e.target.value || 'Player 2'; renderScore(); }});
+
+// ============================================================
+// CAMERA + TRACKING
+// ============================================================
+async function startCamera() {
+  try {
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: state.facingMode, width:{ideal:1280}, height:{ideal:720} },
+      audio: false
+    });
+    video.srcObject = state.stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+    placeholder.style.display = 'none';
+    state.tracking = true;
+    $('statusPill').textContent = '● TRACKING';
+    $('statusPill').style.color = 'var(--accent)';
+    renderCalibration();
+    requestAnimationFrame(trackLoop);
+  } catch (err) {
+    alert('Camera access failed: ' + err.message + '\n\nMake sure you allow camera permissions, and use HTTPS or localhost.');
+    $('statusPill').textContent = 'CAMERA ERR';
+  }
+}
+
+function stopCamera() {
+  if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+  state.stream = null;
+  state.tracking = false;
+  placeholder.style.display = 'flex';
+  $('statusPill').textContent = 'STANDBY';
+  $('statusPill').style.color = '';
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+}
+
+$('btnStart').addEventListener('click', () => { if (!state.tracking) startCamera(); });
+$('btnStop').addEventListener('click', stopCamera);
+
+// ----- CALIBRATION -----
+$('btnCalibrate').addEventListener('click', () => {
+  state.calibrating = !state.calibrating;
+  calOverlay.style.display = state.calibrating ? 'block' : 'none';
+  $('btnCalibrate').classList.toggle('primary', state.calibrating);
+});
+
+function renderCalibration() {
+  calOverlay.innerHTML = '';
+  const stageRect = $('cameraStage').getBoundingClientRect();
+  Object.entries(state.corners).forEach(([label, pt]) => {
+    const dot = document.createElement('div');
+    dot.className = 'cal-corner';
+    dot.dataset.label = label;
+    dot.style.left = (pt.x * 100) + '%';
+    dot.style.top = (pt.y * 100) + '%';
+    let dragging = false;
+    const move = (clientX, clientY) => {
+      const r = $('cameraStage').getBoundingClientRect();
+      state.corners[label] = {
+        x: Math.max(0, Math.min(1, (clientX - r.left)/r.width)),
+        y: Math.max(0, Math.min(1, (clientY - r.top)/r.height))
+      };
+      dot.style.left = (state.corners[label].x * 100) + '%';
+      dot.style.top = (state.corners[label].y * 100) + '%';
+    };
+    dot.addEventListener('pointerdown', e => { dragging = true; dot.setPointerCapture(e.pointerId); });
+    dot.addEventListener('pointermove', e => { if (dragging) move(e.clientX, e.clientY); });
+    dot.addEventListener('pointerup', e => { dragging = false; });
+    calOverlay.appendChild(dot);
+  });
+}
+
+// ----- DETECTION LOOP -----
+const procCanvas = document.createElement('canvas');
+const procCtx = procCanvas.getContext('2d', { willReadFrequently: true });
+
+function trackLoop() {
+  if (!state.tracking) return;
+  const now = performance.now();
+  state.frameCount++;
+  if (now - state.fpsLastTime > 1000) {
+    state.fps = Math.round(state.frameCount * 1000 / (now - state.fpsLastTime));
+    $('statFps').textContent = state.fps;
+    state.frameCount = 0;
+    state.fpsLastTime = now;
+  }
+
+  // Downsample for speed
+  const W = 240;
+  const H = Math.round(W * video.videoHeight / video.videoWidth);
+  procCanvas.width = W; procCanvas.height = H;
+  procCtx.drawImage(video, 0, 0, W, H);
+  const img = procCtx.getImageData(0, 0, W, H);
+  const ball = detectBall(img, W, H);
+
+  // Draw overlay
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  if (ball) {
+    const sx = ball.x / W * overlay.width;
+    const sy = ball.y / H * overlay.height;
+    const sr = Math.max(8, ball.r / W * overlay.width * 2);
+    // Ball indicator
+    ctx.strokeStyle = '#d4ff3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(212,255,58,0.4)';
+    ctx.beginPath(); ctx.arc(sx, sy, sr*1.8, 0, Math.PI*2); ctx.stroke();
+
+    // Trail
+    state.ballTrail.push({ x: ball.x/W, y: ball.y/H, t: now });
+    if (state.ballTrail.length > 30) state.ballTrail.shift();
+    state.ballTrail = state.ballTrail.filter(p => now - p.t < 1500);
+
+    ctx.strokeStyle = 'rgba(212,255,58,0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    state.ballTrail.forEach((p, i) => {
+      const x = p.x * overlay.width, y = p.y * overlay.height;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Detect bounce: lowest local maximum in y (max y = bottom of frame)
+    detectBounce(now);
+
+    // Speed estimate from trail (in px/s normalized)
+    if (state.ballTrail.length >= 5) {
+      const a = state.ballTrail[state.ballTrail.length-5];
+      const b = state.ballTrail[state.ballTrail.length-1];
+      const dist = Math.hypot(b.x-a.x, b.y-a.y);
+      const dt = (b.t - a.t)/1000;
+      // Rough km/h: assume court is ~24m diagonal, scaled
+      const kmh = Math.round(dist * 100 * 3.6 / Math.max(dt, 0.001));
+      $('statSpeed').textContent = Math.min(kmh, 250) + ' k/h';
+    }
+  }
+
+  // Draw court polygon
+  if (state.calibrating || !state.tracking) {} else {
+    ctx.strokeStyle = 'rgba(212,255,58,0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    const c = state.corners;
+    ctx.beginPath();
+    ctx.moveTo(c.TL.x * overlay.width, c.TL.y * overlay.height);
+    ctx.lineTo(c.TR.x * overlay.width, c.TR.y * overlay.height);
+    ctx.lineTo(c.BR.x * overlay.width, c.BR.y * overlay.height);
+    ctx.lineTo(c.BL.x * overlay.width, c.BL.y * overlay.height);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawCourtMap();
+  requestAnimationFrame(trackLoop);
+}
+
+// ----- BALL DETECTION (HSV-based for tennis-yellow) -----
+function detectBall(img, W, H) {
+  const data = img.data;
+  // Tennis ball: hue ~60-90 (yellow-green), high saturation, medium-high value
+  let sumX = 0, sumY = 0, count = 0, minX=W, maxX=0, minY=H, maxY=0;
+  const sens = state.sensitivity;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y*W + x) * 4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      // Quick yellow-green check
+      const isYellowGreen = g > 100 && g > r * 0.85 && g > b * 1.2 && (r + g) > b * 2;
+      const brightness = (r+g+b)/3;
+      if (isYellowGreen && brightness > 80 && brightness < 240) {
+        // Refine: hue calc
+        const max = Math.max(r,g,b), min = Math.min(r,g,b);
+        const sat = max === 0 ? 0 : (max-min)/max * 100;
+        if (sat > sens) {
+          sumX += x; sumY += y; count++;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+  }
+  if (count < state.minBallSize) return null;
+  const cx = sumX/count, cy = sumY/count;
+  const radius = Math.max((maxX-minX), (maxY-minY))/2;
+  if (radius > W/4) return null; // too big, probably background
+  return { x: cx, y: cy, r: radius, pixels: count };
+}
+
+// ----- BOUNCE DETECTION -----
+let lastBounceTime = 0;
+function detectBounce(now) {
+  if (state.ballTrail.length < 7) return;
+  if (now - lastBounceTime < 400) return; // debounce
+  // Look at last 7 points, find if y peaked (max = lower on screen)
+  const pts = state.ballTrail.slice(-7);
+  const ys = pts.map(p => p.y);
+  // Peak detection: middle point higher (numerically larger y) than neighbors
+  const mid = 3;
+  if (ys[mid] > ys[0] + 0.02 && ys[mid] > ys[ys.length-1] + 0.02 && ys[mid] === Math.max(...ys)) {
+    const bouncePt = pts[mid];
+    registerBounce(bouncePt);
+    lastBounceTime = now;
+  }
+}
+
+function registerBounce(pt) {
+  // Map (x,y) in normalized image space to court space via 4-corner homography
+  const courtPt = imageToCourt(pt.x, pt.y);
+  // Court space: [0,1] x [0,1]. Court IN region is full bounds.
+  const inBounds = courtPt.x >= 0 && courtPt.x <= 1 && courtPt.y >= 0 && courtPt.y <= 1;
+  const verdict = inBounds ? 'IN' : 'OUT';
+  // Classify shot type from trail leading up to bounce
+  const shotType = classifyShot();
+  state.bounces.push({ ...pt, court: courtPt, verdict, shot: shotType, t: Date.now() });
+  if (state.bounces.length > 200) state.bounces.shift();
+  state.callCount++;
+  state.lastVerdict = verdict;
+  state.lastShotType = shotType;
+  state.shots.push({ type: shotType, court: courtPt, verdict, t: Date.now() });
+  if (state.shots.length > 500) state.shots.shift();
+  state.shotCounts[shotType] = (state.shotCounts[shotType] || 0) + 1;
+  $('statBounces').textContent = state.bounces.length;
+  $('statShot').textContent = shotType.toUpperCase();
+  const v = $('verdict');
+  v.className = 'verdict ' + verdict.toLowerCase();
+  v.textContent = verdict;
+  $('verdictMeta').textContent = `${shotType.toUpperCase()} • bounce @ ${courtPt.x.toFixed(2)}, ${courtPt.y.toFixed(2)}`;
+  $('msLastCall').textContent = `${verdict} (${shotType}) ${new Date().toLocaleTimeString()}`;
+  showToast(verdict, verdict === 'OUT');
+  if (navigator.vibrate) navigator.vibrate(verdict === 'OUT' ? [80,40,80] : 60);
+}
+
+// ----- SHOT CLASSIFICATION -----
+// Heuristic based on trajectory shape, arc height, descent angle, and bounce position
+function classifyShot() {
+  if (state.ballTrail.length < 5) return 'unknown';
+  const trail = state.ballTrail.slice(-12);
+  if (trail.length < 5) return 'unknown';
+
+  // Compute trajectory metrics
+  const first = trail[0];
+  const last = trail[trail.length-1];
+  const ys = trail.map(p => p.y);
+  const xs = trail.map(p => p.x);
+  const minY = Math.min(...ys); // highest point on screen (top = low y)
+  const maxY = Math.max(...ys);
+  const arcHeight = maxY - minY;
+  const horizontalSpan = Math.abs(last.x - first.x);
+  const verticalSpan = Math.abs(last.y - first.y);
+  const dt = (last.t - first.t) / 1000;
+  const speed = Math.hypot(last.x - first.x, last.y - first.y) / Math.max(dt, 0.01);
+
+  // Descent angle: how steep was the ball falling at end
+  const tailA = trail[trail.length - 4] || first;
+  const descent = Math.abs(last.y - tailA.y) / Math.max(Math.abs(last.x - tailA.x), 0.001);
+
+  // Heuristics:
+  // SMASH: very high arc start, very fast, steep descent
+  if (arcHeight > 0.35 && descent > 2.0 && speed > 0.5) return 'smash';
+  // LOB: very high arc, low overall speed
+  if (arcHeight > 0.35 && speed < 0.35) return 'lob';
+  // SERVE: starts very high (low y), travels far horizontally, fast
+  if (first.y < 0.25 && horizontalSpan > 0.4 && speed > 0.4) return 'serve';
+  // VOLLEY: very flat trajectory, short span, near net (mid-court y in image)
+  if (arcHeight < 0.08 && verticalSpan < 0.15) return 'volley';
+  // FOREHAND vs BACKHAND: determined by horizontal direction.
+  // Convention: ball moving left-to-right relative to camera = forehand from right-handed player POV.
+  // This is a coarse approximation; user can adjust if needed.
+  if (last.x > first.x) return 'forehand';
+  return 'backhand';
+}
+
+// ----- 4-CORNER HOMOGRAPHY (bilinear inverse) -----
+function imageToCourt(ix, iy) {
+  // Inverse bilinear: find (u,v) in [0,1]^2 such that the corners interpolate to (ix,iy)
+  const c = state.corners;
+  // Newton's method, 6 iterations is plenty
+  let u = 0.5, v = 0.5;
+  for (let k = 0; k < 8; k++) {
+    const p = bilinear(c, u, v);
+    const dpdu = {
+      x: (1-v)*(c.TR.x - c.TL.x) + v*(c.BR.x - c.BL.x),
+      y: (1-v)*(c.TR.y - c.TL.y) + v*(c.BR.y - c.BL.y)
+    };
+    const dpdv = {
+      x: (1-u)*(c.BL.x - c.TL.x) + u*(c.BR.x - c.TR.x),
+      y: (1-u)*(c.BL.y - c.TL.y) + u*(c.BR.y - c.TR.y)
+    };
+    const det = dpdu.x*dpdv.y - dpdu.y*dpdv.x;
+    if (Math.abs(det) < 1e-9) break;
+    const ex = p.x - ix, ey = p.y - iy;
+    const du = ( dpdv.y*ex - dpdv.x*ey) / det;
+    const dv = (-dpdu.y*ex + dpdu.x*ey) / det;
+    u -= du; v -= dv;
+  }
+  return { x: u, y: v };
+}
+function bilinear(c, u, v) {
+  return {
+    x: (1-u)*(1-v)*c.TL.x + u*(1-v)*c.TR.x + u*v*c.BR.x + (1-u)*v*c.BL.x,
+    y: (1-u)*(1-v)*c.TL.y + u*(1-v)*c.TR.y + u*v*c.BR.y + (1-u)*v*c.BL.y
+  };
+}
+
+// ----- COURT MAP RENDER -----
+function drawCourtMap() {
+  const cnv = courtMap;
+  const W = cnv.clientWidth;
+  const H = W * 0.5; // tennis court ratio ~78ft x 36ft -> ~2.17, but we show wider for readability
+  cnv.width = W * devicePixelRatio;
+  cnv.height = H * devicePixelRatio;
+  cnv.style.height = H + 'px';
+  const ctx = cnv.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  // Court bg
+  ctx.fillStyle = '#2d6b3f';
+  ctx.fillRect(0,0,W,H);
+  // Surrounding run
+  const pad = W * 0.06;
+  ctx.fillStyle = '#1a4a28';
+  ctx.fillRect(0,0,W,pad);
+  ctx.fillRect(0,H-pad,W,pad);
+  ctx.fillRect(0,0,pad,H);
+  ctx.fillRect(W-pad,0,pad,H);
+  // Court lines (singles)
+  ctx.strokeStyle = '#f4f1e8'; ctx.lineWidth = 2;
+  ctx.strokeRect(pad, pad, W-pad*2, H-pad*2);
+  // Doubles alley
+  const alley = (H - pad*2) * 0.08;
+  ctx.strokeRect(pad+alley, pad, W-pad*2-alley*2, H-pad*2);
+  // Service lines
+  const sx1 = pad + (W-pad*2)*0.25;
+  const sx2 = pad + (W-pad*2)*0.75;
+  ctx.beginPath();
+  ctx.moveTo(sx1, pad+alley); ctx.lineTo(sx1, H-pad-alley);
+  ctx.moveTo(sx2, pad+alley); ctx.lineTo(sx2, H-pad-alley);
+  ctx.stroke();
+  // Center service line
+  ctx.beginPath();
+  ctx.moveTo(sx1, H/2); ctx.lineTo(sx2, H/2);
+  ctx.stroke();
+  // Net
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(W/2, pad-2); ctx.lineTo(W/2, H-pad+2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillRect(W/2 - 1, pad-2, 2, H - pad*2 + 4);
+  // Center mark
+  ctx.strokeStyle = '#f4f1e8'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W/2, pad); ctx.lineTo(W/2, pad+6);
+  ctx.moveTo(W/2, H-pad); ctx.lineTo(W/2, H-pad-6);
+  ctx.stroke();
+
+  // Draw bounces (court space: u in [0,1] horizontal, v in [0,1] vertical)
+  // We map court (u,v) to inside lines (alley to alley, baseline to baseline)
+  state.bounces.forEach((b, idx) => {
+    const recency = (state.bounces.length - idx) / state.bounces.length;
+    const alpha = 0.3 + 0.7 * recency;
+    let x, y;
+    if (b.court.x >= 0 && b.court.x <= 1 && b.court.y >= 0 && b.court.y <= 1) {
+      x = pad + b.court.x * (W - pad*2);
+      y = pad + b.court.y * (H - pad*2);
+    } else {
+      // outside; clamp visually with overflow indication
+      x = pad + Math.max(-pad/W, Math.min(1+pad/(W-pad*2), b.court.x)) * (W-pad*2);
+      y = pad + Math.max(-pad/H, Math.min(1+pad/(H-pad*2), b.court.y)) * (H-pad*2);
+    }
+    ctx.fillStyle = b.verdict === 'IN' ? `rgba(212,255,58,${alpha})` : `rgba(255,71,87,${alpha})`;
+    ctx.strokeStyle = b.verdict === 'IN' ? '#d4ff3a' : '#ff4757';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, idx === state.bounces.length - 1 ? 8 : 4, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    if (idx === state.bounces.length - 1) {
+      // Crosshair on latest
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x-12, y); ctx.lineTo(x+12, y);
+      ctx.moveTo(x, y-12); ctx.lineTo(x, y+12);
+      ctx.stroke();
+    }
+  });
+}
+
+// ----- TOAST -----
+let toastTimer;
+function showToast(msg, danger) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('danger', !!danger);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1200);
+}
+
+// ----- CAMERA → SCORING BRIDGE -----
+$('btnSendIn').addEventListener('click', () => awardFromCall('p1', 'IN'));
+$('btnSendOut').addEventListener('click', () => awardFromCall('p2', 'OUT'));
+
+function awardFromCall(player, label) {
+  if (!state.match) initMatch();
+  awardPoint(player === 'p1' ? 0 : 1);
+  showToast(`${label} → ${state.match.players[player==='p1'?0:1].name}`);
+}
+
+// ============================================================
+// TENNIS SCORING ENGINE
+// ============================================================
+function getConfig() {
+  const get = g => document.querySelector(`.radio-group[data-group="${g}"] .radio-pill.active`).dataset.value;
+  return {
+    setsToWin: +get('format') === 1 ? 1 : Math.ceil(+get('format')/2),
+    bestOf: +get('format'),
+    tiebreak: get('tiebreak') === 'yes',
+    finalSet: get('finalset')
+  };
+}
+
+function initMatch() {
+  const cfg = getConfig();
+  state.match = {
+    cfg,
+    players: [
+      { name: $('inP1').value || 'Player 1', games: 0, sets: [], setsWon: 0, points: 0, tiebreakPoints: 0 },
+      { name: $('inP2').value || 'Player 2', games: 0, sets: [], setsWon: 0, points: 0, tiebreakPoints: 0 }
+    ],
+    serving: 0,
+    currentSet: 1,
+    currentGame: 1,
+    tiebreak: false,
+    superTiebreak: false,
+    totalPoints: 0,
+    finished: false,
+    winner: null,
+    serveNumber: 1
+  };
+  state.history = [];
+  state.matchStartTime = Date.now();
+  renderScore();
+}
+
+function awardPoint(playerIdx) {
+  if (!state.match) initMatch();
+  const m = state.match;
+  if (m.finished) return;
+  // Snapshot for undo
+  state.history.push(JSON.parse(JSON.stringify(m)));
+  if (state.history.length > 50) state.history.shift();
+
+  m.totalPoints++;
+  const p = m.players[playerIdx];
+  const o = m.players[1 - playerIdx];
+
+  if (m.superTiebreak) {
+    p.tiebreakPoints++;
+    if (p.tiebreakPoints >= 10 && p.tiebreakPoints - o.tiebreakPoints >= 2) {
+      // Win super tiebreak = win match
+      p.setsWon++;
+      p.sets.push(1); o.sets.push(0);
+      m.finished = true; m.winner = playerIdx;
+    } else {
+      // Serve alternates every 2 points after first
+      if ((p.tiebreakPoints + o.tiebreakPoints) % 2 === 1) m.serving = 1 - m.serving;
+    }
+  } else if (m.tiebreak) {
+    p.tiebreakPoints++;
+    const target = 7;
+    if (p.tiebreakPoints >= target && p.tiebreakPoints - o.tiebreakPoints >= 2) {
+      // Win tiebreak = win set
+      p.games++;
+      p.setsWon++;
+      p.sets.push(p.games); o.sets.push(o.games);
+      p.games = 0; o.games = 0;
+      p.tiebreakPoints = 0; o.tiebreakPoints = 0;
+      m.tiebreak = false;
+      m.currentSet++;
+      m.currentGame = 1;
+      m.serving = 1 - m.serving;
+      checkMatchEnd();
+    } else {
+      const total = p.tiebreakPoints + o.tiebreakPoints;
+      if (total === 1 || (total >= 1 && (total - 1) % 2 === 0)) m.serving = 1 - m.serving;
+    }
+  } else {
+    // Standard game scoring 0,15,30,40,game
+    p.points++;
+    // Check game win
+    if (p.points >= 4 && p.points - o.points >= 2) {
+      p.games++;
+      p.points = 0; o.points = 0;
+      m.currentGame++;
+      m.serving = 1 - m.serving;
+      // Check set win
+      checkSetEnd();
+    }
+  }
+  m.serveNumber = 1;
+  renderScore();
+}
+
+function checkSetEnd() {
+  const m = state.match;
+  const [p1, p2] = m.players;
+  const winSet = (a, b) => (a >= 6 && a - b >= 2) || (a === 7 && b <= 6);
+
+  if (winSet(p1.games, p2.games)) {
+    p1.setsWon++;
+    p1.sets.push(p1.games); p2.sets.push(p2.games);
+    p1.games = 0; p2.games = 0;
+    m.currentSet++;
+    m.currentGame = 1;
+    checkMatchEnd();
+  } else if (winSet(p2.games, p1.games)) {
+    p2.setsWon++;
+    p1.sets.push(p1.games); p2.sets.push(p2.games);
+    p1.games = 0; p2.games = 0;
+    m.currentSet++;
+    m.currentGame = 1;
+    checkMatchEnd();
+  } else if (m.cfg.tiebreak && p1.games === 6 && p2.games === 6) {
+    // Decide tiebreak type
+    const isFinalSet = (p1.setsWon + p2.setsWon + 1) === m.cfg.bestOf;
+    if (isFinalSet && m.cfg.finalSet === 'super') {
+      m.superTiebreak = true;
+    } else {
+      m.tiebreak = true;
+    }
+  }
+}
+
+function checkMatchEnd() {
+  const m = state.match;
+  if (m.players[0].setsWon >= m.cfg.setsToWin) { m.finished = true; m.winner = 0; }
+  else if (m.players[1].setsWon >= m.cfg.setsToWin) { m.finished = true; m.winner = 1; }
+}
+
+const POINT_LABELS = ['0','15','30','40','AD'];
+function pointDisplay(playerIdx) {
+  const m = state.match;
+  if (m.superTiebreak || m.tiebreak) {
+    return m.players[playerIdx].tiebreakPoints.toString();
+  }
+  const p = m.players[playerIdx].points;
+  const o = m.players[1-playerIdx].points;
+  if (p >= 3 && o >= 3) {
+    if (p === o) return '40';
+    if (p === o + 1) return 'AD';
+    return '40';
+  }
+  return POINT_LABELS[Math.min(p, 3)];
+}
+
+function renderScore() {
+  if (!state.match) initMatch();
+  const m = state.match;
+  $('nameP1').textContent = m.players[0].name;
+  $('nameP2').textContent = m.players[1].name;
+  $('pbNameP1').textContent = m.players[0].name;
+  $('pbNameP2').textContent = m.players[1].name;
+
+  // Sets cells: render past sets + current
+  const renderSets = (idx, el) => {
+    el.innerHTML = '';
+    const setsToShow = Math.max(m.cfg.bestOf, m.players[idx].sets.length + 1);
+    for (let i = 0; i < setsToShow; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'sb-cell';
+      if (i < m.players[idx].sets.length) {
+        cell.textContent = m.players[idx].sets[i];
+        if (m.players[idx].sets[i] > m.players[1-idx].sets[i]) cell.style.color = 'var(--accent)';
+      } else {
+        cell.textContent = '–';
+        cell.style.opacity = '0.3';
+      }
+      el.appendChild(cell);
+    }
+  };
+  renderSets(0, $('setsP1'));
+  renderSets(1, $('setsP2'));
+
+  $('gamesP1').textContent = m.players[0].games;
+  $('gamesP2').textContent = m.players[1].games;
+  $('pointP1').textContent = pointDisplay(0);
+  $('pointP2').textContent = pointDisplay(1);
+
+  $('row-p1').classList.toggle('serving', m.serving === 0 && !m.finished);
+  $('row-p2').classList.toggle('serving', m.serving === 1 && !m.finished);
+
+  let label = `MATCH — BEST OF ${m.cfg.bestOf}`;
+  if (m.finished) label += ` • ${m.players[m.winner].name.toUpperCase()} WINS`;
+  $('sbMatchLabel').textContent = label;
+  $('sbServeNumber').textContent = m.tiebreak ? 'TIEBREAK' : (m.superTiebreak ? '10-PT SUPER' : `${m.serveNumber === 1 ? '1ST' : '2ND'} SERVE`);
+
+  $('msStatus').textContent = m.finished ? 'FINISHED' : (m.tiebreak || m.superTiebreak ? 'TIEBREAK' : 'IN PLAY');
+  $('msSet').textContent = m.currentSet;
+  $('msGame').textContent = m.currentGame;
+  $('msTotal').textContent = m.totalPoints;
+}
+
+// ----- BUTTONS -----
+$('btnPointP1').addEventListener('click', () => awardPoint(0));
+$('btnPointP2').addEventListener('click', () => awardPoint(1));
+$('btnUndo').addEventListener('click', () => {
+  if (state.history.length) {
+    state.match = state.history.pop();
+    renderScore();
+    showToast('UNDO');
+  }
+});
+$('btnSwitchServe').addEventListener('click', () => {
+  if (state.match) { state.match.serving = 1 - state.match.serving; renderScore(); }
+});
+$('btnResetMatch').addEventListener('click', () => {
+  if (confirm('Start a new match? Current scores will be lost.')) initMatch();
+});
+
+// ============================================================
+// HEATMAP RENDERING
+// ============================================================
+function renderHeatmap() {
+  const cnv = $('heatmapCanvas');
+  const W = cnv.clientWidth;
+  const H = W * 0.5;
+  cnv.width = W * devicePixelRatio;
+  cnv.height = H * devicePixelRatio;
+  cnv.style.height = H + 'px';
+  const ctx = cnv.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  // Court background
+  ctx.fillStyle = '#2d6b3f';
+  ctx.fillRect(0,0,W,H);
+  const pad = W * 0.06;
+  ctx.fillStyle = '#1a4a28';
+  ctx.fillRect(0,0,W,pad);
+  ctx.fillRect(0,H-pad,W,pad);
+  ctx.fillRect(0,0,pad,H);
+  ctx.fillRect(W-pad,0,pad,H);
+  // Lines
+  ctx.strokeStyle = 'rgba(244,241,232,0.3)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pad, pad, W-pad*2, H-pad*2);
+  const alley = (H - pad*2) * 0.08;
+  ctx.strokeRect(pad+alley, pad, W-pad*2-alley*2, H-pad*2);
+  const sx1 = pad + (W-pad*2)*0.25;
+  const sx2 = pad + (W-pad*2)*0.75;
+  ctx.beginPath();
+  ctx.moveTo(sx1, pad+alley); ctx.lineTo(sx1, H-pad-alley);
+  ctx.moveTo(sx2, pad+alley); ctx.lineTo(sx2, H-pad-alley);
+  ctx.moveTo(sx1, H/2); ctx.lineTo(sx2, H/2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(W/2, pad-2); ctx.lineTo(W/2, H-pad+2); ctx.stroke();
+
+  // Build heatmap from all bounces (in-bounds only for true heat; out shown as red dots)
+  const inB = state.bounces.filter(b => b.verdict === 'IN');
+  const outB = state.bounces.filter(b => b.verdict === 'OUT');
+
+  if (inB.length > 0) {
+    // Gaussian-blur additive accumulation on off-screen canvas
+    const heatCnv = document.createElement('canvas');
+    const hw = Math.round(W), hh = Math.round(H);
+    heatCnv.width = hw; heatCnv.height = hh;
+    const hctx = heatCnv.getContext('2d');
+    const radius = Math.max(20, hw * 0.06);
+    inB.forEach(b => {
+      const x = pad + b.court.x * (W - pad*2);
+      const y = pad + b.court.y * (H - pad*2);
+      const grad = hctx.createRadialGradient(x, y, 0, x, y, radius);
+      grad.addColorStop(0, 'rgba(255,255,255,0.5)');
+      grad.addColorStop(0.4, 'rgba(255,255,255,0.18)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      hctx.fillStyle = grad;
+      hctx.beginPath();
+      hctx.arc(x, y, radius, 0, Math.PI*2);
+      hctx.fill();
+    });
+    // Read pixels and recolor by intensity
+    const imgData = hctx.getImageData(0,0,hw,hh);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i+3];
+      if (a < 5) continue;
+      const t = Math.min(1, a / 255);
+      // Cold (transparent green) → cyan → yellow → red
+      let r, g, b;
+      if (t < 0.25) { r = 0; g = 200*t/0.25; b = 255*t/0.25; }
+      else if (t < 0.5) { r = 0; g = 200 + 55*(t-0.25)/0.25; b = 255 - 255*(t-0.25)/0.25; }
+      else if (t < 0.75) { r = 255*(t-0.5)/0.25; g = 255; b = 0; }
+      else { r = 255; g = 255 - 255*(t-0.75)/0.25; b = 0; }
+      data[i] = r; data[i+1] = g; data[i+2] = b; data[i+3] = Math.min(220, a * 1.8);
+    }
+    hctx.putImageData(imgData, 0, 0);
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(heatCnv, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+  // OUT bounces as red X
+  ctx.strokeStyle = '#ff4757';
+  ctx.lineWidth = 2;
+  outB.forEach(b => {
+    let x = pad + Math.max(-0.1, Math.min(1.1, b.court.x)) * (W-pad*2);
+    let y = pad + Math.max(-0.1, Math.min(1.1, b.court.y)) * (H-pad*2);
+    ctx.beginPath();
+    ctx.moveTo(x-5, y-5); ctx.lineTo(x+5, y+5);
+    ctx.moveTo(x+5, y-5); ctx.lineTo(x-5, y+5);
+    ctx.stroke();
+  });
+
+  // Legend
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(W - 90, H - 24, 84, 18);
+  ctx.fillStyle = '#fff';
+  ctx.font = '9px monospace';
+  ctx.fillText(`${inB.length} IN • ${outB.length} OUT`, W - 85, H - 11);
+}
+
+function renderShotBreakdown() {
+  const el = $('shotBreakdown');
+  const total = Object.values(state.shotCounts).reduce((a,b)=>a+b, 0);
+  if (total === 0) {
+    el.innerHTML = '<div style="color:var(--text-dim); text-align:center; padding:20px;">No shots tracked yet</div>';
+    return;
+  }
+  const order = ['forehand','backhand','serve','volley','smash','lob'];
+  const max = Math.max(...Object.values(state.shotCounts), 1);
+  el.innerHTML = order.map(type => {
+    const c = state.shotCounts[type] || 0;
+    const pct = total ? Math.round(c/total*100) : 0;
+    const width = max ? (c/max*100) : 0;
+    return `<div class="shot-bar">
+      <div class="shot-label">${type.toUpperCase()}</div>
+      <div class="shot-track"><div class="shot-fill" style="width:${width}%"></div></div>
+      <div class="shot-count">${c} <span style="color:var(--text-dim); font-weight:400;">(${pct}%)</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderZoneStats() {
+  const el = $('zoneStats');
+  const inB = state.bounces.filter(b => b.verdict === 'IN');
+  if (inB.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-dim); text-align:center; padding:20px;">No data yet</div>';
+    return;
+  }
+  // 3x3 zone grid
+  const zones = Array(9).fill(0);
+  inB.forEach(b => {
+    const cx = Math.min(2, Math.floor(b.court.x * 3));
+    const cy = Math.min(2, Math.floor(b.court.y * 3));
+    zones[cy * 3 + cx]++;
+  });
+  const total = inB.length;
+  const labels = ['DEEP-L','DEEP-C','DEEP-R','MID-L','MID-C','MID-R','SHORT-L','SHORT-C','SHORT-R'];
+  el.innerHTML = '<div class="zone-grid">' + zones.map((c, i) => {
+    const pct = total ? Math.round(c/total*100) : 0;
+    const intensity = total ? c/Math.max(...zones,1) : 0;
+    return `<div class="zone-cell" style="background: rgba(212,255,58,${0.08 + intensity*0.35});">
+      <div>${labels[i]}</div>
+      <div class="zone-pct">${pct}%</div>
+      <div style="font-size:8px; opacity:0.6;">${c}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+$('btnClearHeat').addEventListener('click', () => {
+  if (confirm('Clear all bounce and shot data for this session?')) {
+    state.bounces = []; state.shots = [];
+    state.shotCounts = { forehand:0, backhand:0, serve:0, volley:0, lob:0, smash:0 };
+    state.callCount = 0;
+    $('statBounces').textContent = 0;
+    $('statShot').textContent = '—';
+    renderHeatmap(); renderShotBreakdown(); renderZoneStats();
+  }
+});
+
+$('btnExportHeat').addEventListener('click', () => {
+  const cnv = $('heatmapCanvas');
+  const link = document.createElement('a');
+  link.download = `mata-sa-agila-heatmap-${Date.now()}.png`;
+  link.href = cnv.toDataURL('image/png');
+  link.click();
+});
+
+// ============================================================
+// MATCH HISTORY (LOCAL + GOOGLE SHEETS)
+// ============================================================
+const LS_HIST = 'msa_history_v1';
+
+function loadLocalHistory() {
+  try { return JSON.parse(localStorage.getItem(LS_HIST) || '[]'); }
+  catch { return []; }
+}
+function saveLocalHistory(arr) {
+  localStorage.setItem(LS_HIST, JSON.stringify(arr.slice(-50)));
+}
+
+function buildMatchRecord() {
+  const m = state.match;
+  if (!m) return null;
+  const duration = state.matchStartTime ? Math.round((Date.now() - state.matchStartTime)/1000) : 0;
+  const scoreStr = m.players[0].sets.map((s,i) => `${s}-${m.players[1].sets[i]}`).join(', ') +
+    (m.players[0].games + m.players[1].games > 0 ? ` (${m.players[0].games}-${m.players[1].games})` : '');
+  return {
+    timestamp: new Date().toISOString(),
+    session: state.sessionLabel,
+    player1: m.players[0].name,
+    player2: m.players[1].name,
+    p1Sets: m.players[0].setsWon,
+    p2Sets: m.players[1].setsWon,
+    score: scoreStr || '0-0',
+    winner: m.finished ? m.players[m.winner].name : 'IN PROGRESS',
+    bestOf: m.cfg.bestOf,
+    totalPoints: m.totalPoints,
+    durationSec: duration,
+    totalBounces: state.bounces.length,
+    inCalls: state.bounces.filter(b=>b.verdict==='IN').length,
+    outCalls: state.bounces.filter(b=>b.verdict==='OUT').length,
+    forehand: state.shotCounts.forehand || 0,
+    backhand: state.shotCounts.backhand || 0,
+    serve: state.shotCounts.serve || 0,
+    volley: state.shotCounts.volley || 0,
+    smash: state.shotCounts.smash || 0,
+    lob: state.shotCounts.lob || 0,
+  };
+}
+
+async function saveMatchToSheets() {
+  const rec = buildMatchRecord();
+  if (!rec) { $('saveStatus').textContent = '✗ No active match'; return; }
+  // Save locally first (always works)
+  const hist = loadLocalHistory();
+  hist.push(rec);
+  saveLocalHistory(hist);
+  renderLocalHistory();
+  $('saveStatus').innerHTML = '<span style="color:var(--accent);">✓ Saved locally</span>';
+
+  if (!state.sheetsUrl) {
+    $('saveStatus').innerHTML += '<br><span style="color:var(--danger);">⚠ No Apps Script URL set — save to Sheets skipped</span>';
+    return;
+  }
+  // GET-based request to Apps Script (matches your existing pattern)
+  $('saveStatus').innerHTML += '<br><span>↑ Uploading to Google Sheets...</span>';
+  const params = new URLSearchParams({ action: 'saveMatch', ...rec });
+  const url = `${state.sheetsUrl}?${params.toString()}`;
+  try {
+    const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+    if (resp.ok || resp.status === 0) {
+      $('saveStatus').innerHTML = '<span style="color:var(--accent);">✓ Saved locally + to Google Sheets</span>';
+    } else {
+      throw new Error('HTTP ' + resp.status);
+    }
+  } catch (err) {
+    // Fallback: image-pixel trick (always works with no-CORS GET)
+    const img = new Image();
+    img.src = url + '&_t=' + Date.now();
+    img.onload = img.onerror = () => {
+      $('saveStatus').innerHTML = '<span style="color:var(--accent);">✓ Saved locally + Sheets (via no-CORS)</span>';
+    };
+  }
+}
+
+function renderLocalHistory() {
+  const el = $('localHistory');
+  const hist = loadLocalHistory().slice().reverse();
+  if (hist.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-dim); text-align:center; padding:20px; font-size:11px;">No saved matches yet</div>';
+    return;
+  }
+  el.innerHTML = hist.map(r => {
+    const date = new Date(r.timestamp);
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const dur = Math.floor(r.durationSec/60) + 'm';
+    const winnerBadge = r.winner !== 'IN PROGRESS' ? `<span class="hi-winner">${r.winner === r.player1 ? 'P1 WIN' : 'P2 WIN'}</span>` : '';
+    return `<div class="hist-item">
+      <div class="hi-top">
+        <div class="hi-players">${r.player1} <span style="color:var(--text-dim)">vs</span> ${r.player2}${winnerBadge}</div>
+        <div class="hi-date">${dateStr}</div>
+      </div>
+      <div class="hi-score">${r.score}  •  Bo${r.bestOf}</div>
+      <div class="hi-meta">${r.totalPoints} pts • ${dur} • ${r.totalBounces} bounces (${r.inCalls} IN / ${r.outCalls} OUT) ${r.session ? '• '+r.session : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+$('btnSaveMatch').addEventListener('click', saveMatchToSheets);
+$('btnRefreshHist').addEventListener('click', renderLocalHistory);
+$('btnClearHist').addEventListener('click', () => {
+  if (confirm('Delete all local match history? Google Sheets data is unaffected.')) {
+    localStorage.removeItem(LS_HIST);
+    renderLocalHistory();
+  }
+});
+
+// Sheets config persistence
+$('inSheetsUrl').value = state.sheetsUrl;
+$('inSessionLabel').value = state.sessionLabel;
+$('inSheetsUrl').addEventListener('change', e => {
+  state.sheetsUrl = e.target.value.trim();
+  localStorage.setItem('msa_sheets_url', state.sheetsUrl);
+});
+$('inSessionLabel').addEventListener('change', e => {
+  state.sessionLabel = e.target.value.trim();
+  localStorage.setItem('msa_session', state.sessionLabel);
+});
+$('btnTestSheets').addEventListener('click', async () => {
+  if (!state.sheetsUrl) { $('sheetsStatus').textContent = '✗ Enter a URL first'; return; }
+  $('sheetsStatus').textContent = '↑ Testing...';
+  const url = state.sheetsUrl + '?action=ping&_t=' + Date.now();
+  const img = new Image();
+  let done = false;
+  const finish = (ok) => {
+    if (done) return; done = true;
+    $('sheetsStatus').innerHTML = ok
+      ? '<span style="color:var(--accent);">✓ Reached endpoint (Apps Script must implement doGet)</span>'
+      : '<span style="color:var(--danger);">✗ Could not reach URL — check deployment</span>';
+  };
+  img.onload = () => finish(true);
+  img.onerror = () => finish(true); // no-CORS GET always errors as image, but request fires
+  img.src = url;
+  setTimeout(() => finish(false), 6000);
+});
+
+// Tab change re-renders
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    if (t.dataset.tab === 'heatmap') {
+      requestAnimationFrame(() => { renderHeatmap(); renderShotBreakdown(); renderZoneStats(); });
+    }
+    if (t.dataset.tab === 'history') {
+      renderLocalHistory();
+    }
+  });
+});
+
+// ============================================================
+// TUTORIAL OVERLAY
+// ============================================================
+const TUTORIAL_STEPS = [
+  {
+    title: 'WELCOME TO MATA SA AGILA',
+    body: 'This 8-step tutorial will set up your phone camera for tennis tracking. Takes about 90 seconds. You can skip and replay it anytime via the TUTORIAL button.',
+    visual: '<div style="display:flex; align-items:center; justify-content:center; height:100%; font-size:48px;">🦅</div>'
+  },
+  {
+    title: 'STEP 1 — MOUNT YOUR PHONE',
+    body: 'Place the phone <strong>behind the baseline, elevated ~3m</strong>, tilted down 30°. Use a tripod, fence clip, or umpire chair. The full singles court must be visible in frame.',
+    visual: `
+      <div style="position:absolute; inset:0; padding:10px; display:flex; align-items:center; justify-content:center;">
+        <div style="position:relative; width:90%; height:90%;">
+          <div style="position:absolute; left:10%; top:10%; width:80%; height:60%; background:#2d6b3f; border:2px solid #f4f1e8; border-radius:4px;">
+            <div style="position:absolute; top:50%; left:0; right:0; height:2px; background:#fff;"></div>
+          </div>
+          <div style="position:absolute; left:50%; bottom:5%; transform:translateX(-50%); width:30px; height:50px; background:var(--bg-2); border:2px solid var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--accent);">📱</div>
+          <div style="position:absolute; left:50%; bottom:55%; width:2px; height:25%; background:rgba(212,255,58,0.3); transform:translateX(-50%);"></div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 2 — LIGHTING CHECK',
+    body: '<strong>Cloudy daylight is best.</strong> Avoid noon (washed out) and sunset (long shadows). Court must be brightly lit. Ball must be standard yellow — Wilson, Penn, or Dunlop. Worn balls won\'t detect well.',
+    visual: `
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:12px; height:100%;">
+        <div style="background:var(--bg); border-radius:6px; padding:8px; text-align:center; border:1px solid var(--accent);">
+          <div style="font-size:24px;">☁️</div>
+          <div style="font-size:9px; color:var(--accent); margin-top:4px; letter-spacing:1px;">BEST</div>
+        </div>
+        <div style="background:var(--bg); border-radius:6px; padding:8px; text-align:center; opacity:0.5;">
+          <div style="font-size:24px;">☀️</div>
+          <div style="font-size:9px; color:var(--text-dim); margin-top:4px; letter-spacing:1px;">OK</div>
+        </div>
+        <div style="background:var(--bg); border-radius:6px; padding:8px; text-align:center; opacity:0.3;">
+          <div style="font-size:24px;">🌅</div>
+          <div style="font-size:9px; color:var(--danger); margin-top:4px; letter-spacing:1px;">AVOID</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 3 — START CAMERA',
+    body: 'Tap <strong>▶ START</strong> on the TRACK tab. Your browser will ask for camera permission — tap <strong>ALLOW</strong>. The live video feed will appear in the camera stage.',
+    visual: `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px;">
+        <div style="background:var(--accent); color:var(--bg); padding:10px 24px; border-radius:6px; font-weight:900; letter-spacing:2px; font-size:13px; animation: tut-pulse 1.5s infinite;">▶ START</div>
+        <div style="font-size:9px; color:var(--text-dim); letter-spacing:1px;">⬇</div>
+        <div style="background:var(--bg); border:1px solid var(--border); padding:8px 14px; border-radius:6px; font-size:10px; color:var(--text);">
+          Allow camera access?
+          <div style="margin-top:6px; display:flex; gap:6px; justify-content:center;">
+            <div style="background:var(--accent); color:var(--bg); padding:3px 8px; border-radius:3px; font-size:9px; font-weight:700;">ALLOW</div>
+            <div style="background:var(--bg-2); color:var(--text-dim); padding:3px 8px; border-radius:3px; font-size:9px;">block</div>
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 4 — CALIBRATE COURT',
+    body: 'Tap <strong>◇ CALIBRATE</strong>. Four yellow dots will appear, labeled <strong>TL, TR, BR, BL</strong>. Drag each one to the matching <strong>singles sideline corner</strong> on your screen.',
+    visual: `
+      <div class="mini-court" style="position:absolute; inset:15%;">
+        <div class="tut-corner-dot" style="top:-8px; left:-8px;">
+          <div style="position:absolute; top:-16px; left:-4px; background:var(--accent); color:var(--bg); font-size:7px; padding:1px 4px; border-radius:2px; font-weight:900;">TL</div>
+        </div>
+        <div class="tut-corner-dot" style="top:-8px; right:-8px;">
+          <div style="position:absolute; top:-16px; right:-4px; background:var(--accent); color:var(--bg); font-size:7px; padding:1px 4px; border-radius:2px; font-weight:900;">TR</div>
+        </div>
+        <div class="tut-corner-dot" style="bottom:-8px; right:-8px;">
+          <div style="position:absolute; bottom:-16px; right:-4px; background:var(--accent); color:var(--bg); font-size:7px; padding:1px 4px; border-radius:2px; font-weight:900;">BR</div>
+        </div>
+        <div class="tut-corner-dot" style="bottom:-8px; left:-8px;">
+          <div style="position:absolute; bottom:-16px; left:-4px; background:var(--accent); color:var(--bg); font-size:7px; padding:1px 4px; border-radius:2px; font-weight:900;">BL</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 5 — VERIFY DETECTION',
+    body: 'Have someone hit a ball. A <strong>green circle</strong> should track the ball, with a trail showing its path. If not, go to <strong>SET</strong> tab and lower the Color Sensitivity slider.',
+    visual: `
+      <div class="mini-court" style="position:absolute; inset:15%; overflow:hidden;">
+        <div class="tut-ball"></div>
+        <div style="position:absolute; left:48%; top:65%; width:18px; height:18px; border:2px solid #d4ff3a; border-radius:50%; box-shadow: 0 0 10px rgba(212,255,58,0.6);"></div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 6 — RUN SELF-TEST',
+    body: 'Once camera is calibrated, tap <strong>⚡ SELF-TEST</strong> below. It runs 4 automated checks (lighting, color detection, motion sensing, frame rate) and gives you a confidence score before the match starts.',
+    visual: `
+      <div style="display:flex; flex-direction:column; gap:6px; padding:12px;">
+        <div style="background:var(--bg); border-left:3px solid var(--accent); padding:6px 10px; border-radius:4px; font-size:10px;">✓ Lighting OK</div>
+        <div style="background:var(--bg); border-left:3px solid var(--accent); padding:6px 10px; border-radius:4px; font-size:10px;">✓ Color detection OK</div>
+        <div style="background:var(--bg); border-left:3px solid #ffb84a; padding:6px 10px; border-radius:4px; font-size:10px;">⚠ Frame rate marginal</div>
+        <div style="background:var(--bg); border-left:3px solid var(--accent); padding:6px 10px; border-radius:4px; font-size:10px;">✓ Calibration valid</div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 7 — DURING MATCH',
+    body: 'After each bounce: a verdict (IN/OUT) appears with vibration feedback. Use <strong>IN→P1</strong> / <strong>OUT→P2</strong> buttons to award points. Switch tabs anytime to check SCORE, HEAT or LOG.',
+    visual: `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px;">
+        <div style="background:rgba(212,255,58,0.1); border:2px solid var(--accent); color:var(--accent); padding:16px 40px; border-radius:10px; font-weight:900; font-size:28px; letter-spacing:6px; animation: tut-pulse 1.2s infinite;">IN</div>
+        <div style="font-size:9px; color:var(--text-dim); letter-spacing:1px;">Bounce at 0.42, 0.78 • inside court</div>
+      </div>
+    `
+  },
+  {
+    title: 'STEP 8 — SAVE THE MATCH',
+    body: 'End-of-match: go to <strong>LOG</strong> tab → <strong>SAVE TO GOOGLE SHEETS</strong>. Configure your Apps Script URL once in SET tab and it persists. You\'re ready to play!',
+    visual: `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px;">
+        <div style="background:var(--accent); color:var(--bg); padding:12px 24px; border-radius:8px; font-weight:900; font-size:11px; letter-spacing:2px;">↑ SAVE TO SHEETS</div>
+        <div style="font-size:36px;">✅</div>
+        <div style="font-size:10px; color:var(--accent); letter-spacing:2px;">YOU'RE ALL SET</div>
+      </div>
+    `
+  }
+];
+
+let tutStep = 0;
+function showTutorial() {
+  tutStep = 0;
+  $('tutorial').classList.add('show');
+  renderTutorial();
+}
+function hideTutorial() {
+  $('tutorial').classList.remove('show');
+  localStorage.setItem('msa_tutorial_seen', '1');
+}
+function renderTutorial() {
+  const step = TUTORIAL_STEPS[tutStep];
+  $('tutNum').textContent = tutStep + 1;
+  $('tutTitle').textContent = step.title;
+  $('tutBody').innerHTML = step.body;
+  $('tutVisual').innerHTML = step.visual;
+  $('tutPrev').disabled = tutStep === 0;
+  $('tutNext').textContent = tutStep === TUTORIAL_STEPS.length - 1 ? 'FINISH ✓' : 'NEXT ▸';
+  // progress dots
+  $('tutProgress').innerHTML = TUTORIAL_STEPS.map((_,i) =>
+    `<div class="tut-dot ${i === tutStep ? 'active' : ''}"></div>`
+  ).join('');
+}
+$('tutPrev').addEventListener('click', () => { if (tutStep > 0) { tutStep--; renderTutorial(); }});
+$('tutNext').addEventListener('click', () => {
+  if (tutStep < TUTORIAL_STEPS.length - 1) { tutStep++; renderTutorial(); }
+  else hideTutorial();
+});
+$('tutSkip').addEventListener('click', hideTutorial);
+$('btnHelp').addEventListener('click', showTutorial);
+
+// Auto-show on first visit
+if (!localStorage.getItem('msa_tutorial_seen')) {
+  setTimeout(showTutorial, 400);
+}
+
+// ============================================================
+// SELF-DIAGNOSTIC
+// ============================================================
+async function runSelfTest() {
+  const panel = $('diagPanel');
+  const results = $('diagResults');
+  panel.style.display = 'block';
+  results.innerHTML = '<div class="diag-running">Running diagnostics</div>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const tests = [];
+
+  // TEST 1: Camera available
+  await new Promise(r => setTimeout(r, 300));
+  if (!state.tracking || !state.stream) {
+    tests.push({ name: 'CAMERA ACTIVE', status: 'fail',
+      detail: 'Camera not running. Tap ▶ START first, then re-run self-test.' });
+    renderDiag(tests, null);
+    return;
+  } else {
+    tests.push({ name: 'CAMERA ACTIVE', status: 'pass',
+      detail: `Stream OK at ${video.videoWidth}×${video.videoHeight}` });
+  }
+  renderDiag(tests);
+
+  // TEST 2: Frame rate
+  await new Promise(r => setTimeout(r, 800));
+  const fps = state.fps;
+  if (fps >= 20) {
+    tests.push({ name: 'FRAME RATE', status: 'pass', detail: `${fps} FPS — good for tracking` });
+  } else if (fps >= 12) {
+    tests.push({ name: 'FRAME RATE', status: 'warn',
+      detail: `${fps} FPS — marginal. Close other apps, reduce resolution.` });
+  } else {
+    tests.push({ name: 'FRAME RATE', status: 'fail',
+      detail: `${fps} FPS — too slow. Fast balls will be missed.` });
+  }
+  renderDiag(tests);
+
+  // TEST 3: Lighting (sample current frame brightness)
+  await new Promise(r => setTimeout(r, 500));
+  const lightCanvas = document.createElement('canvas');
+  lightCanvas.width = 80; lightCanvas.height = 60;
+  const lctx = lightCanvas.getContext('2d');
+  lctx.drawImage(video, 0, 0, 80, 60);
+  const lightData = lctx.getImageData(0,0,80,60).data;
+  let totalBright = 0, brightPx = 0, darkPx = 0;
+  for (let i = 0; i < lightData.length; i += 4) {
+    const b = (lightData[i] + lightData[i+1] + lightData[i+2]) / 3;
+    totalBright += b;
+    if (b > 200) brightPx++;
+    if (b < 40) darkPx++;
+  }
+  const avgBright = totalBright / (lightData.length / 4);
+  const totalPx = lightData.length / 4;
+  const brightPct = brightPx / totalPx * 100;
+  const darkPct = darkPx / totalPx * 100;
+  if (avgBright < 60) {
+    tests.push({ name: 'LIGHTING', status: 'fail',
+      detail: `Scene too dark (avg ${avgBright.toFixed(0)}/255). Move to brighter area or wait for daylight.` });
+  } else if (avgBright > 200 || brightPct > 40) {
+    tests.push({ name: 'LIGHTING', status: 'warn',
+      detail: `Scene overexposed (avg ${avgBright.toFixed(0)}, ${brightPct.toFixed(0)}% bright pixels). May wash out ball color.` });
+  } else if (darkPct > 30) {
+    tests.push({ name: 'LIGHTING', status: 'warn',
+      detail: `Heavy shadows detected (${darkPct.toFixed(0)}% dark pixels). Try moving phone.` });
+  } else {
+    tests.push({ name: 'LIGHTING', status: 'pass',
+      detail: `Brightness ${avgBright.toFixed(0)}/255 — good range for color detection.` });
+  }
+  renderDiag(tests);
+
+  // TEST 4: Color saturation (can we even see yellow-green in scene?)
+  await new Promise(r => setTimeout(r, 500));
+  let yellowGreenPx = 0;
+  for (let i = 0; i < lightData.length; i += 4) {
+    const r = lightData[i], g = lightData[i+1], b = lightData[i+2];
+    if (g > 100 && g > r * 0.85 && g > b * 1.2) yellowGreenPx++;
+  }
+  const ygPct = yellowGreenPx / totalPx * 100;
+  if (ygPct < 0.5) {
+    tests.push({ name: 'COLOR PALETTE', status: 'warn',
+      detail: `No yellow-green pixels visible (${ygPct.toFixed(1)}%). Place a tennis ball in frame and re-test.` });
+  } else if (ygPct > 50) {
+    tests.push({ name: 'COLOR PALETTE', status: 'warn',
+      detail: `Scene is mostly yellow-green (${ygPct.toFixed(0)}%). Grass court may cause false detections — raise sensitivity.` });
+  } else {
+    tests.push({ name: 'COLOR PALETTE', status: 'pass',
+      detail: `Yellow-green range present (${ygPct.toFixed(1)}% of frame). Ball should be detectable.` });
+  }
+  renderDiag(tests);
+
+  // TEST 5: Calibration sanity
+  await new Promise(r => setTimeout(r, 400));
+  const c = state.corners;
+  const area = polygonArea([c.TL, c.TR, c.BR, c.BL]);
+  const isConvex = checkConvex([c.TL, c.TR, c.BR, c.BL]);
+  if (!isConvex) {
+    tests.push({ name: 'CALIBRATION', status: 'fail',
+      detail: 'Court corners form a self-intersecting shape. Re-tap CALIBRATE and drag in TL→TR→BR→BL order.' });
+  } else if (area < 0.15) {
+    tests.push({ name: 'CALIBRATION', status: 'warn',
+      detail: `Court area only ${(area*100).toFixed(0)}% of frame. Move phone closer or zoom in.` });
+  } else if (area > 0.85) {
+    tests.push({ name: 'CALIBRATION', status: 'warn',
+      detail: `Court fills ${(area*100).toFixed(0)}% of frame. OUT calls near corners may be missed.` });
+  } else {
+    tests.push({ name: 'CALIBRATION', status: 'pass',
+      detail: `Court occupies ${(area*100).toFixed(0)}% of frame — solid framing.` });
+  }
+  renderDiag(tests);
+
+  // TEST 6: Motion sensitivity (detect frame-to-frame change)
+  await new Promise(r => setTimeout(r, 300));
+  const motion = await sampleMotion();
+  if (motion < 0.5) {
+    tests.push({ name: 'MOTION DETECTION', status: 'warn',
+      detail: `Very low scene activity (${motion.toFixed(1)}/100). Have someone walk through frame to verify camera is live.` });
+  } else if (motion > 30) {
+    tests.push({ name: 'MOTION DETECTION', status: 'warn',
+      detail: `High motion (${motion.toFixed(1)}/100) — is the phone shaking? Stabilize the mount.` });
+  } else {
+    tests.push({ name: 'MOTION DETECTION', status: 'pass',
+      detail: `Motion baseline ${motion.toFixed(1)}/100 — stable, ready to detect ball.` });
+  }
+  renderDiag(tests);
+
+  // Compute overall score
+  const passes = tests.filter(t => t.status === 'pass').length;
+  const warns = tests.filter(t => t.status === 'warn').length;
+  const fails = tests.filter(t => t.status === 'fail').length;
+  const score = Math.max(0, Math.round((passes * 100 - warns * 15 - fails * 40) / tests.length));
+  renderDiag(tests, score);
+}
+
+function renderDiag(tests, score) {
+  const el = $('diagResults');
+  let html = '';
+  if (score !== undefined && score !== null) {
+    const cls = score >= 80 ? 'good' : score >= 50 ? 'ok' : 'bad';
+    const label = score >= 80 ? 'READY TO TRACK' : score >= 50 ? 'WORKABLE — REVIEW WARNINGS' : 'NOT READY — FIX ISSUES';
+    html += `<div class="diag-score ${cls}">
+      <div class="ds-num">${score}<span style="font-size:18px; opacity:0.5;">/100</span></div>
+      <div class="ds-label">${label}</div>
+    </div>`;
+  }
+  html += tests.map(t => `
+    <div class="diag-result ${t.status}">
+      <div class="diag-name">
+        <span>${t.status === 'pass' ? '✓' : t.status === 'warn' ? '⚠' : '✗'} ${t.name}</span>
+        <span class="diag-status">${t.status.toUpperCase()}</span>
+      </div>
+      <div class="diag-detail">${t.detail}</div>
+    </div>
+  `).join('');
+  el.innerHTML = html;
+}
+
+function polygonArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    a += pts[i].x * pts[j].y;
+    a -= pts[j].x * pts[i].y;
+  }
+  return Math.abs(a / 2);
+}
+
+function checkConvex(pts) {
+  let sign = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const c = pts[(i + 2) % pts.length];
+    const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+    if (cross !== 0) {
+      if (sign === 0) sign = Math.sign(cross);
+      else if (Math.sign(cross) !== sign) return false;
+    }
+  }
+  return true;
+}
+
+async function sampleMotion() {
+  const w = 60, h = 45;
+  const c1 = document.createElement('canvas');
+  c1.width = w; c1.height = h;
+  const ctx1 = c1.getContext('2d');
+  ctx1.drawImage(video, 0, 0, w, h);
+  const d1 = ctx1.getImageData(0,0,w,h).data;
+  await new Promise(r => setTimeout(r, 250));
+  ctx1.drawImage(video, 0, 0, w, h);
+  const d2 = ctx1.getImageData(0,0,w,h).data;
+  let diff = 0;
+  for (let i = 0; i < d1.length; i += 4) {
+    diff += Math.abs(d1[i] - d2[i]) + Math.abs(d1[i+1] - d2[i+1]) + Math.abs(d1[i+2] - d2[i+2]);
+  }
+  return (diff / (d1.length / 4)) / 7.65; // normalize to 0-100 range
+}
+
+$('btnDiagnose').addEventListener('click', runSelfTest);
+
+// ============================================================
+// CALIBRATION WIZARD — Guided step-by-step
+// ============================================================
+const WIZARD_STEPS = [
+  { type: 'intro', label: 'Welcome' },
+  { type: 'camera', label: 'Camera' },
+  { type: 'frame', label: 'Frame' },
+  { type: 'corner', corner: 'TL', label: 'TL' },
+  { type: 'corner', corner: 'TR', label: 'TR' },
+  { type: 'corner', corner: 'BR', label: 'BR' },
+  { type: 'corner', corner: 'BL', label: 'BL' },
+  { type: 'verify', label: 'Verify' },
+  { type: 'done', label: 'Done' }
+];
+
+const wizard = {
+  step: 0,
+  corners: { TL:null, TR:null, BR:null, BL:null },
+  draggedCorner: null,
+  hasStream: false
+};
+
+function openWizard() {
+  wizard.step = 0;
+  wizard.corners = { TL:null, TR:null, BR:null, BL:null };
+  $('wizard').classList.add('show');
+  // Use the existing camera stream if available, else acquire one
+  initWizardCamera();
+  renderWizard();
+}
+
+function closeWizard() {
+  $('wizard').classList.remove('show');
+  // Don't stop the main camera stream — share it
+}
+
+async function initWizardCamera() {
+  const wv = $('wizVideo');
+  if (state.stream) {
+    // Reuse main camera stream
+    wv.srcObject = state.stream;
+    wizard.hasStream = true;
+  } else {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: state.facingMode, width:{ideal:1280}, height:{ideal:720} },
+        audio: false
+      });
+      video.srcObject = state.stream;
+      wv.srcObject = state.stream;
+      await new Promise(r => video.onloadedmetadata = r);
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+      placeholder.style.display = 'none';
+      state.tracking = true;
+      $('statusPill').textContent = '● TRACKING';
+      $('statusPill').style.color = 'var(--accent)';
+      requestAnimationFrame(trackLoop);
+      wizard.hasStream = true;
+    } catch (err) {
+      wizard.hasStream = false;
+    }
+  }
+}
+
+function renderWizard() {
+  const step = WIZARD_STEPS[wizard.step];
+  // Step bar
+  $('wizStepBar').innerHTML = WIZARD_STEPS.map((_, i) => {
+    let cls = '';
+    if (i < wizard.step) cls = 'done';
+    else if (i === wizard.step) cls = 'active';
+    return `<div class="wstep ${cls}"></div>`;
+  }).join('');
+  $('wizStepInfo').textContent = `STEP ${wizard.step + 1} OF ${WIZARD_STEPS.length}`;
+
+  // Hide schematic by default
+  $('wizSchematic').style.display = 'none';
+  $('wizValidation').classList.remove('show');
+  $('wizTargetOverlay').innerHTML = '';
+
+  // Render based on step type
+  if (step.type === 'intro') renderIntro();
+  else if (step.type === 'camera') renderCameraCheck();
+  else if (step.type === 'frame') renderFrameCheck();
+  else if (step.type === 'corner') renderCornerStep(step.corner);
+  else if (step.type === 'verify') renderVerify();
+  else if (step.type === 'done') renderDone();
+
+  renderTrapezoid();
+}
+
+function renderIntro() {
+  $('wizTitle').textContent = 'CALIBRATION WIZARD';
+  $('wizPrompt').innerHTML = `Welcome! This wizard guides you through court setup in <strong>7 steps</strong>. You'll place 4 corner markers on the live camera view, then verify before saving. Takes about 60 seconds.<br><br>Make sure your phone is <strong>already mounted and stable</strong> before starting.`;
+  $('wizBack').disabled = true;
+  $('wizForward').textContent = 'BEGIN ▸';
+}
+
+function renderCameraCheck() {
+  $('wizTitle').textContent = 'CHECK CAMERA';
+  $('wizBack').disabled = false;
+  $('wizForward').textContent = 'CONTINUE ▸';
+  const val = $('wizValidation');
+  if (wizard.hasStream && $('wizVideo').videoWidth > 0) {
+    $('wizPrompt').innerHTML = `Camera is <strong>live</strong>. You should see the court below. If the view is wrong, switch REAR/FRONT camera in <strong>SET</strong> tab and reopen the wizard.`;
+    val.className = 'wi-validation ok show';
+    val.textContent = '✓ Camera stream detected — ready to proceed.';
+    $('wizForward').disabled = false;
+  } else {
+    $('wizPrompt').innerHTML = `Camera is <strong>not running</strong>. Close this wizard, tap <strong>▶ START</strong> on the TRACK tab, allow camera permission, then reopen the wizard.`;
+    val.className = 'wi-validation error show';
+    val.textContent = '✗ No camera stream. Cannot proceed.';
+    $('wizForward').disabled = true;
+  }
+}
+
+function renderFrameCheck() {
+  $('wizTitle').textContent = 'CHECK COURT FRAMING';
+  $('wizBack').disabled = false;
+  $('wizForward').disabled = false;
+  $('wizForward').textContent = 'COURT IS VISIBLE ▸';
+  $('wizPrompt').innerHTML = `Look at the live view. Confirm <strong>all 4 court corners are visible</strong> with at least 5% margin on each side. The court should fill 40-70% of the screen.<br><br>If corners are cut off, <strong>adjust the phone position now</strong> before placing markers.`;
+  // Show all 4 corner hints as faint overlays
+  const wto = $('wizTargetOverlay');
+  ['TL','TR','BR','BL'].forEach(c => {
+    const pos = getCornerHintPosition(c);
+    const hint = document.createElement('div');
+    hint.style.cssText = `position:absolute; left:${pos.x*100}%; top:${pos.y*100}%; transform:translate(-50%,-50%); width:30px; height:30px; border:2px dashed rgba(212,255,58,0.5); border-radius:50%; pointer-events:none;`;
+    hint.innerHTML = `<div style="position:absolute; top:-16px; left:50%; transform:translateX(-50%); font-size:9px; color:var(--accent); letter-spacing:1px; font-weight:900;">${c}</div>`;
+    wto.appendChild(hint);
+  });
+}
+
+function getCornerHintPosition(corner) {
+  // Default hint positions on the camera view
+  const hints = {
+    TL: { x: 0.15, y: 0.25 },
+    TR: { x: 0.85, y: 0.25 },
+    BR: { x: 0.92, y: 0.85 },
+    BL: { x: 0.08, y: 0.85 }
+  };
+  return hints[corner];
+}
+
+function renderCornerStep(corner) {
+  const cornerNames = {
+    TL: 'TOP-LEFT — FAR LEFT corner',
+    TR: 'TOP-RIGHT — FAR RIGHT corner',
+    BR: 'BOTTOM-RIGHT — NEAR RIGHT corner',
+    BL: 'BOTTOM-LEFT — NEAR LEFT corner'
+  };
+  const cornerHint = {
+    TL: 'the FAR end of the court, on YOUR LEFT',
+    TR: 'the FAR end of the court, on YOUR RIGHT',
+    BR: 'the NEAR end of the court, on YOUR RIGHT (closest to camera)',
+    BL: 'the NEAR end of the court, on YOUR LEFT (closest to camera)'
+  };
+  $('wizTitle').textContent = `PLACE ${cornerNames[corner]}`;
+  $('wizBack').disabled = false;
+  $('wizPrompt').innerHTML = `Drag the <strong>yellow target</strong> onto the <strong>${corner}</strong> singles sideline corner — ${cornerHint[corner]}.<br><br>Place the center of the target <strong>directly on the court line intersection</strong>.`;
+  // Update schematic
+  $('wizSchematic').style.display = 'block';
+  document.querySelectorAll('.ws-corner').forEach(el => {
+    const c = el.dataset.c;
+    el.classList.remove('target', 'done');
+    if (c === corner) el.classList.add('target');
+    else if (wizard.corners[c]) el.classList.add('done');
+  });
+
+  // Place draggable target
+  const startPos = wizard.corners[corner] || getCornerHintPosition(corner);
+  const target = document.createElement('div');
+  target.className = 'wizard-target';
+  target.style.left = (startPos.x * 100) + '%';
+  target.style.top = (startPos.y * 100) + '%';
+  target.innerHTML = `<div class="target-label">${corner}</div><div class="target-corner">DRAG ME</div>`;
+  let dragging = false;
+  target.addEventListener('pointerdown', e => {
+    dragging = true;
+    target.setPointerCapture(e.pointerId);
+    target.style.cursor = 'grabbing';
+  });
+  target.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const rect = $('wizCamera').getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    target.style.left = (x * 100) + '%';
+    target.style.top = (y * 100) + '%';
+    wizard.corners[corner] = { x, y };
+    validateCornerPlacement(corner);
+    renderTrapezoid();
+  });
+  target.addEventListener('pointerup', e => {
+    dragging = false;
+    target.style.cursor = 'grab';
+  });
+  $('wizTargetOverlay').appendChild(target);
+
+  // Render any placed corners (other than current)
+  Object.entries(wizard.corners).forEach(([c, pt]) => {
+    if (c === corner || !pt) return;
+    const dot = document.createElement('div');
+    dot.className = 'wizard-placed';
+    dot.style.left = (pt.x * 100) + '%';
+    dot.style.top = (pt.y * 100) + '%';
+    dot.innerHTML = `<div class="placed-label">${c}</div>`;
+    $('wizTargetOverlay').appendChild(dot);
+  });
+
+  // Initial placement = pre-set value
+  if (!wizard.corners[corner]) {
+    wizard.corners[corner] = startPos;
+    validateCornerPlacement(corner);
+  } else {
+    validateCornerPlacement(corner);
+  }
+
+  $('wizForward').textContent = wizard.step < 6 ? 'CONFIRM ▸' : 'CONFIRM & VERIFY ▸';
+}
+
+function validateCornerPlacement(corner) {
+  const val = $('wizValidation');
+  const pt = wizard.corners[corner];
+  if (!pt) return;
+  // Validation checks:
+  // 1. Not too close to edge (cut off?)
+  // 2. Sane relative position vs other placed corners
+  const placed = Object.entries(wizard.corners).filter(([k,v]) => v && k !== corner);
+  let warnings = [];
+  if (pt.x < 0.02 || pt.x > 0.98 || pt.y < 0.02 || pt.y > 0.98) {
+    warnings.push('Marker is at the screen edge — the court corner may be cut off. Reposition the phone if needed.');
+  }
+  // Topology checks based on what's placed
+  const o = wizard.corners;
+  if (corner === 'TR' && o.TL && pt.x <= o.TL.x) {
+    warnings.push('TR should be to the RIGHT of TL. Drag right.');
+  }
+  if (corner === 'TL' && o.TR && pt.x >= o.TR.x) {
+    warnings.push('TL should be to the LEFT of TR. Drag left.');
+  }
+  if (corner === 'BR' && o.TR && pt.y <= o.TR.y) {
+    warnings.push('BR should be BELOW TR. Drag down.');
+  }
+  if (corner === 'BR' && o.BL && pt.x <= o.BL.x) {
+    warnings.push('BR should be to the RIGHT of BL. Drag right.');
+  }
+  if (corner === 'BL' && o.TL && pt.y <= o.TL.y) {
+    warnings.push('BL should be BELOW TL. Drag down.');
+  }
+  if (corner === 'BL' && o.BR && pt.x >= o.BR.x) {
+    warnings.push('BL should be to the LEFT of BR. Drag left.');
+  }
+  if (warnings.length > 0) {
+    val.className = 'wi-validation warn show';
+    val.innerHTML = '⚠ ' + warnings.join('<br>⚠ ');
+    $('wizForward').disabled = true;
+  } else {
+    val.className = 'wi-validation ok show';
+    val.textContent = `✓ ${corner} positioned at (${(pt.x*100).toFixed(0)}%, ${(pt.y*100).toFixed(0)}%). Drag for fine adjustment, then tap CONFIRM.`;
+    $('wizForward').disabled = false;
+  }
+}
+
+function renderTrapezoid() {
+  const cnv = $('wizTrapezoid');
+  const rect = $('wizCamera').getBoundingClientRect();
+  if (rect.width === 0) return;
+  cnv.width = rect.width * devicePixelRatio;
+  cnv.height = rect.height * devicePixelRatio;
+  cnv.style.width = rect.width + 'px';
+  cnv.style.height = rect.height + 'px';
+  const ctx = cnv.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  const c = wizard.corners;
+  if (c.TL && c.TR && c.BR && c.BL) {
+    ctx.fillStyle = 'rgba(212,255,58,0.08)';
+    ctx.strokeStyle = 'var(--accent)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    ctx.moveTo(c.TL.x * rect.width, c.TL.y * rect.height);
+    ctx.lineTo(c.TR.x * rect.width, c.TR.y * rect.height);
+    ctx.lineTo(c.BR.x * rect.width, c.BR.y * rect.height);
+    ctx.lineTo(c.BL.x * rect.width, c.BL.y * rect.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#d4ff3a';
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    // Partial: just lines between placed corners in order
+    const order = ['TL','TR','BR','BL'];
+    ctx.strokeStyle = 'rgba(212,255,58,0.7)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    let started = false;
+    ctx.beginPath();
+    order.forEach(corner => {
+      if (c[corner]) {
+        const x = c[corner].x * rect.width;
+        const y = c[corner].y * rect.height;
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function renderVerify() {
+  $('wizTitle').textContent = 'VERIFY CALIBRATION';
+  $('wizBack').disabled = false;
+  $('wizForward').textContent = 'SAVE & FINISH ▸';
+  const c = wizard.corners;
+  // Render all 4 placed dots
+  ['TL','TR','BR','BL'].forEach(corner => {
+    if (!c[corner]) return;
+    const dot = document.createElement('div');
+    dot.className = 'wizard-placed';
+    dot.style.left = (c[corner].x * 100) + '%';
+    dot.style.top = (c[corner].y * 100) + '%';
+    dot.innerHTML = `<div class="placed-label">${corner}</div>`;
+    $('wizTargetOverlay').appendChild(dot);
+  });
+
+  // Calculate metrics
+  const area = polygonArea([c.TL, c.TR, c.BR, c.BL]);
+  const isConvex = checkConvex([c.TL, c.TR, c.BR, c.BL]);
+  const topWidth = c.TR.x - c.TL.x;
+  const botWidth = c.BR.x - c.BL.x;
+  const isTrapezoidal = botWidth > topWidth * 1.05;
+
+  let issues = [];
+  if (!isConvex) issues.push('Corners are crossed/self-intersecting. Go back and fix.');
+  if (area < 0.15) issues.push(`Court area only ${(area*100).toFixed(0)}% of frame. Phone may be too far — consider moving closer.`);
+  if (area > 0.85) issues.push(`Court fills ${(area*100).toFixed(0)}% of frame. OUT calls near edges may be missed.`);
+  if (!isTrapezoidal && isConvex) issues.push('Shape is rectangular, not tapered. Phone may be too low — calls will still work but be less precise.');
+
+  const val = $('wizValidation');
+  $('wizPrompt').innerHTML = `Review the <strong>yellow trapezoid</strong> overlaid on the court. It should follow the singles sideline corners precisely.<br><br><strong>Metrics:</strong><br>
+    • Court fills ${(area*100).toFixed(0)}% of frame<br>
+    • Shape is ${isConvex ? '<span style="color:var(--accent)">valid</span>' : '<span style="color:var(--danger)">invalid (crossed)</span>'}<br>
+    • Perspective ${isTrapezoidal ? '<span style="color:var(--accent)">correct (tapered)</span>' : '<span style="color:#ffb84a">flat (low camera)</span>'}`;
+
+  if (issues.length > 0 && !isConvex) {
+    val.className = 'wi-validation error show';
+    val.innerHTML = '✗ ' + issues.join('<br>✗ ');
+    $('wizForward').disabled = true;
+  } else if (issues.length > 0) {
+    val.className = 'wi-validation warn show';
+    val.innerHTML = '⚠ ' + issues.join('<br>⚠ ');
+    $('wizForward').disabled = false;
+  } else {
+    val.className = 'wi-validation ok show';
+    val.textContent = '✓ Calibration looks excellent. Tap SAVE & FINISH to apply.';
+    $('wizForward').disabled = false;
+  }
+}
+
+function renderDone() {
+  $('wizTitle').textContent = 'CALIBRATION COMPLETE';
+  $('wizBack').disabled = true;
+  $('wizForward').textContent = 'CLOSE & START PLAYING ✓';
+  // Apply to main state.corners
+  Object.entries(wizard.corners).forEach(([k, v]) => {
+    if (v) state.corners[k] = { x: v.x, y: v.y };
+  });
+  renderCalibration(); // refresh main view
+  $('wizPrompt').innerHTML = `<strong style="color:var(--accent)">✓ Calibration saved.</strong><br><br>The court is now mapped. Next recommended steps:<br><br>
+    1. Tap <strong>⚡ SELF-TEST</strong> on the TRACK tab to verify camera quality<br>
+    2. Run a 60-second validation rally (5 IN balls, 5 OUT balls)<br>
+    3. If accuracy is below 80%, reopen this wizard and refine corners<br><br>
+    <strong>Recalibrate anytime</strong> the phone moves or you switch ends of the court.`;
+  const val = $('wizValidation');
+  val.className = 'wi-validation ok show';
+  val.textContent = '✓ Ready to track. Have a great match!';
+}
+
+function wizardNext() {
+  // For corner steps, confirm placement is valid before advancing
+  const step = WIZARD_STEPS[wizard.step];
+  if (step.type === 'corner') {
+    if (!wizard.corners[step.corner]) return;
+  }
+  if (wizard.step < WIZARD_STEPS.length - 1) {
+    wizard.step++;
+    renderWizard();
+  } else {
+    closeWizard();
+  }
+}
+
+function wizardBack() {
+  if (wizard.step > 0) {
+    wizard.step--;
+    renderWizard();
+  }
+}
+
+$('btnWizard').addEventListener('click', openWizard);
+$('wizClose').addEventListener('click', () => {
+  if (confirm('Exit wizard without saving calibration?')) closeWizard();
+});
+$('wizForward').addEventListener('click', wizardNext);
+$('wizBack').addEventListener('click', wizardBack);
+
+window.addEventListener('resize', () => {
+  if ($('wizard').classList.contains('show')) renderTrapezoid();
+});
+
+// ============================================================
+// CAST TO TV — Broadcast & Receive
+// ============================================================
+const CAST_CHANNEL_NAME = 'mata-sa-agila-cast';
+let castChannel = null;
+let castReceivers = new Set();
+let lastBroadcastTime = 0;
+
+function initCastChannel() {
+  if (typeof BroadcastChannel === 'undefined') return null;
+  try {
+    castChannel = new BroadcastChannel(CAST_CHANNEL_NAME);
+    castChannel.onmessage = handleCastMessage;
+    return castChannel;
+  } catch (e) {
+    console.warn('BroadcastChannel unavailable:', e);
+    return null;
+  }
+}
+
+function handleCastMessage(ev) {
+  const msg = ev.data;
+  if (!msg || msg.session !== TV_SESSION_ID) return;
+  if (TV_DISPLAY_MODE) {
+    // TV side: apply incoming state
+    if (msg.type === 'state') applyTvState(msg.payload);
+    else if (msg.type === 'bounce') applyTvBounce(msg.payload);
+    else if (msg.type === 'ping') {
+      // respond with pong
+      castChannel.postMessage({ type: 'pong', session: TV_SESSION_ID, from: 'tv', t: Date.now() });
+    }
+  } else {
+    // Phone side: track receivers
+    if (msg.type === 'pong' || msg.type === 'hello') {
+      castReceivers.add(msg.from || 'tv');
+      updateCastStatus();
+    }
+  }
+}
+
+function broadcastState() {
+  if (!castChannel || TV_DISPLAY_MODE) return;
+  const now = Date.now();
+  if (now - lastBroadcastTime < 80) return; // throttle
+  lastBroadcastTime = now;
+  if (!state.match) return;
+  const m = state.match;
+  const payload = {
+    matchLabel: m.cfg.bestOf,
+    serveLabel: m.tiebreak ? 'TIEBREAK' : (m.superTiebreak ? 'SUPER TB' : `${m.serveNumber === 1 ? '1ST' : '2ND'} SERVE`),
+    serving: m.serving,
+    finished: m.finished,
+    winner: m.winner,
+    players: m.players.map((p, i) => ({
+      name: p.name,
+      sets: p.sets.slice(),
+      otherSets: m.players[1-i].sets.slice(),
+      games: p.games,
+      pointDisplay: pointDisplay(i),
+      setsToShow: Math.max(m.cfg.bestOf, p.sets.length + 1)
+    })),
+    bounces: state.bounces.slice(-50),
+    inCalls: state.bounces.filter(b => b.verdict === 'IN').length,
+    outCalls: state.bounces.filter(b => b.verdict === 'OUT').length,
+    totalBounces: state.bounces.length,
+    lastVerdict: state.lastVerdict,
+    lastShot: state.lastShotType,
+    session: state.sessionLabel || 'Untitled Session',
+    matchStartTime: state.matchStartTime
+  };
+  castChannel.postMessage({ type: 'state', session: TV_SESSION_ID, from: 'phone', payload, t: now });
+}
+
+function broadcastBounce(bounce) {
+  if (!castChannel || TV_DISPLAY_MODE) return;
+  castChannel.postMessage({ type: 'bounce', session: TV_SESSION_ID, from: 'phone', payload: bounce, t: Date.now() });
+}
+
+function updateCastStatus() {
+  const el = $('castStatus');
+  if (!el) return;
+  if (castReceivers.size > 0) {
+    const hasCloud = castReceivers.has('cloud-tv');
+    const channel = hasCloud ? 'CLOUD' : 'LOCAL';
+    el.innerHTML = `<div style="color:var(--accent); font-weight:700;">● ${castReceivers.size} TV display(s) connected <span style="font-size:9px; background:var(--accent); color:var(--bg); padding:1px 5px; border-radius:3px; margin-left:4px;">${channel}</span></div>
+      <div style="font-size:10px; color:var(--text-dim); margin-top:6px;">Updates streaming live — score, bounces, verdicts.</div>`;
+    const pill = $('statusPill');
+    if (!pill.innerHTML.includes('CAST') && !pill.innerHTML.includes('CLOUD')) {
+      const orig = pill.textContent;
+      pill.innerHTML = orig + ' <span class="cast-status">CAST</span>';
+    }
+  } else {
+    el.innerHTML = '<div style="color:var(--text-dim);">⊘ No TV connected yet</div>';
+  }
+}
+
+function buildTvUrl() {
+  const base = window.location.origin + window.location.pathname;
+  return `${base}?display=tv&session=${encodeURIComponent(TV_SESSION_ID)}`;
+}
+
+// ============================================================
+// CLOUD RELAY - WebSocket cross-device casting
+// ============================================================
+const cloud = {
+  ws: null,
+  connected: false,
+  provider: localStorage.getItem('msa_relay_provider') || 'piesocket',
+  pieKey: localStorage.getItem('msa_pie_key') || '',
+  roomCode: localStorage.getItem('msa_room_code') || '',
+  customWs: localStorage.getItem('msa_custom_ws') || '',
+  reconnectTimer: null,
+  reconnectAttempts: 0,
+  lastSendTime: 0
+};
+
+const URL_CLOUD_ROOM = urlParams.get('room');
+const URL_CLOUD_KEY = urlParams.get('pkey');
+const URL_CLOUD_WS = urlParams.get('ws');
+
+function buildCloudUrl() {
+  const base = window.location.origin + window.location.pathname;
+  let url = `${base}?display=tv&session=${encodeURIComponent(TV_SESSION_ID)}`;
+  if (cloud.provider === 'piesocket' && cloud.pieKey && cloud.roomCode) {
+    url += `&pkey=${encodeURIComponent(cloud.pieKey)}&room=${encodeURIComponent(cloud.roomCode)}`;
+  } else if (cloud.provider === 'custom' && cloud.customWs) {
+    url += `&ws=${encodeURIComponent(cloud.customWs)}`;
+  }
+  return url;
+}
+
+function getRelayWsUrl() {
+  if (URL_CLOUD_WS) return URL_CLOUD_WS;
+  if (URL_CLOUD_KEY && URL_CLOUD_ROOM) {
+    return `wss://free.blr2.piesocket.com/v3/${encodeURIComponent(URL_CLOUD_ROOM)}?api_key=${encodeURIComponent(URL_CLOUD_KEY)}&notify_self=0`;
+  }
+  if (cloud.provider === 'custom' && cloud.customWs) {
+    return cloud.customWs;
+  }
+  if (cloud.provider === 'piesocket' && cloud.pieKey && cloud.roomCode) {
+    return `wss://free.blr2.piesocket.com/v3/${encodeURIComponent(cloud.roomCode)}?api_key=${encodeURIComponent(cloud.pieKey)}&notify_self=0`;
+  }
+  return null;
+}
+
+function connectCloudRelay(silent) {
+  const wsUrl = getRelayWsUrl();
+  if (!wsUrl) {
+    if (!silent) updateCloudStatus('error', '✗ Missing API key, room, or custom URL.');
+    return false;
+  }
+  if (cloud.ws) {
+    try { cloud.ws.close(); } catch {}
+    cloud.ws = null;
+  }
+  if (!silent) updateCloudStatus('connecting', '⏳ Connecting to relay...');
+  try {
+    cloud.ws = new WebSocket(wsUrl);
+  } catch (err) {
+    updateCloudStatus('error', '✗ WebSocket creation failed: ' + err.message);
+    return false;
+  }
+
+  cloud.ws.onopen = () => {
+    cloud.connected = true;
+    cloud.reconnectAttempts = 0;
+    if (TV_DISPLAY_MODE) {
+      updateCloudStatus('ok', '✓ Connected — waiting for phone broadcast...');
+      // TV side announces presence
+      cloud.ws.send(JSON.stringify({ type: 'hello', from: 'tv', session: TV_SESSION_ID, t: Date.now() }));
+    } else {
+      updateCloudStatus('ok', '✓ Connected to relay. Open the URL below on TV.');
+      // Phone side announces & broadcasts initial state
+      cloud.ws.send(JSON.stringify({ type: 'hello', from: 'phone', session: TV_SESSION_ID, t: Date.now() }));
+      broadcastStateCloud();
+      // Show QR for TV URL
+      const qrUrl = buildCloudUrl();
+      $('cloudQrSection').style.display = 'block';
+      const urlEl = $('qrUrlCloud');
+      if (urlEl) urlEl.textContent = qrUrl;
+      const qrEl = $('qrCanvasCloud');
+      if (qrEl) generateQR(qrUrl, qrEl);
+      // Mark cast as active in header
+      const pill = $('statusPill');
+      if (pill && !pill.innerHTML.includes('CLOUD')) {
+        const orig = pill.textContent;
+        pill.innerHTML = orig + ' <span class="cast-status">CLOUD</span>';
+      }
+    }
+  };
+
+  cloud.ws.onmessage = (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+    if (!msg || msg.session !== TV_SESSION_ID) return;
+    if (TV_DISPLAY_MODE) {
+      if (msg.type === 'state' && msg.from === 'phone') applyTvState(msg.payload);
+      else if (msg.type === 'bounce' && msg.from === 'phone') applyTvBounce(msg.payload);
+      else if (msg.type === 'hello' && msg.from === 'phone') {
+        // Request a state push
+        cloud.ws.send(JSON.stringify({ type: 'request_state', from: 'tv', session: TV_SESSION_ID, t: Date.now() }));
+      }
+    } else {
+      if (msg.type === 'hello' && msg.from === 'tv') {
+        castReceivers.add('cloud-tv');
+        updateCastStatus();
+        // Send current state immediately
+        broadcastStateCloud();
+      } else if (msg.type === 'request_state' && msg.from === 'tv') {
+        broadcastStateCloud();
+      }
+    }
+  };
+
+  cloud.ws.onclose = () => {
+    cloud.connected = false;
+    castReceivers.delete('cloud-tv');
+    updateCastStatus();
+    if (cloud.reconnectAttempts < 5) {
+      cloud.reconnectAttempts++;
+      const delay = Math.min(15000, 1500 * Math.pow(2, cloud.reconnectAttempts));
+      updateCloudStatus('warn', `⚠ Disconnected. Retrying in ${Math.round(delay/1000)}s... (attempt ${cloud.reconnectAttempts}/5)`);
+      cloud.reconnectTimer = setTimeout(() => connectCloudRelay(true), delay);
+    } else {
+      updateCloudStatus('error', '✗ Disconnected. Tap CONNECT to retry.');
+    }
+  };
+
+  cloud.ws.onerror = (e) => {
+    updateCloudStatus('error', '✗ Connection error. Check API key and network.');
+  };
+  return true;
+}
+
+function broadcastStateCloud() {
+  if (!cloud.ws || cloud.ws.readyState !== 1 || TV_DISPLAY_MODE) return;
+  const now = Date.now();
+  if (now - cloud.lastSendTime < 100) return;
+  cloud.lastSendTime = now;
+  if (!state.match) return;
+  const m = state.match;
+  const payload = {
+    matchLabel: m.cfg.bestOf,
+    serveLabel: m.tiebreak ? 'TIEBREAK' : (m.superTiebreak ? 'SUPER TB' : `${m.serveNumber === 1 ? '1ST' : '2ND'} SERVE`),
+    serving: m.serving,
+    finished: m.finished,
+    winner: m.winner,
+    players: m.players.map((p, i) => ({
+      name: p.name,
+      sets: p.sets.slice(),
+      otherSets: m.players[1-i].sets.slice(),
+      games: p.games,
+      pointDisplay: pointDisplay(i),
+      setsToShow: Math.max(m.cfg.bestOf, p.sets.length + 1)
+    })),
+    bounces: state.bounces.slice(-50),
+    inCalls: state.bounces.filter(b => b.verdict === 'IN').length,
+    outCalls: state.bounces.filter(b => b.verdict === 'OUT').length,
+    totalBounces: state.bounces.length,
+    lastVerdict: state.lastVerdict,
+    lastShot: state.lastShotType,
+    session: state.sessionLabel || 'Untitled Session',
+    matchStartTime: state.matchStartTime
+  };
+  try {
+    cloud.ws.send(JSON.stringify({ type: 'state', from: 'phone', session: TV_SESSION_ID, payload, t: now }));
+  } catch (err) {
+    console.warn('Cloud send failed:', err);
+  }
+}
+
+function broadcastBounceCloud(bounce) {
+  if (!cloud.ws || cloud.ws.readyState !== 1 || TV_DISPLAY_MODE) return;
+  try {
+    cloud.ws.send(JSON.stringify({ type: 'bounce', from: 'phone', session: TV_SESSION_ID, payload: bounce, t: Date.now() }));
+  } catch (err) {}
+}
+
+function updateCloudStatus(level, msg) {
+  const el = $('cloudStatus');
+  if (!el) return;
+  const colors = { ok: 'var(--accent)', error: 'var(--danger)', warn: '#ffb84a', connecting: 'var(--text-dim)' };
+  el.style.color = colors[level] || 'var(--text-dim)';
+  el.style.borderLeft = `3px solid ${colors[level] || 'var(--border)'}`;
+  el.style.paddingLeft = '12px';
+  el.innerHTML = msg;
+}
+
+// Hook up cloud config UI
+const inPieKey = $('inPieKey');
+const inRoomCode = $('inRoomCode');
+const inCustomWs = $('inCustomWs');
+if (inPieKey) {
+  inPieKey.value = cloud.pieKey;
+  inPieKey.addEventListener('change', e => {
+    cloud.pieKey = e.target.value.trim();
+    localStorage.setItem('msa_pie_key', cloud.pieKey);
+  });
+}
+if (inRoomCode) {
+  inRoomCode.value = cloud.roomCode;
+  inRoomCode.addEventListener('change', e => {
+    cloud.roomCode = e.target.value.trim();
+    localStorage.setItem('msa_room_code', cloud.roomCode);
+  });
+}
+if (inCustomWs) {
+  inCustomWs.value = cloud.customWs;
+  inCustomWs.addEventListener('change', e => {
+    cloud.customWs = e.target.value.trim();
+    localStorage.setItem('msa_custom_ws', cloud.customWs);
+  });
+}
+
+// Relay provider switcher
+document.querySelectorAll('.radio-group[data-group="relay"] .radio-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    cloud.provider = pill.dataset.value;
+    localStorage.setItem('msa_relay_provider', cloud.provider);
+    $('piesocketConfig').style.display = cloud.provider === 'piesocket' ? 'block' : 'none';
+    $('customConfig').style.display = cloud.provider === 'custom' ? 'block' : 'none';
+  });
+});
+
+// Apply saved relay provider preference
+(function applyRelayProvider() {
+  document.querySelectorAll('.radio-group[data-group="relay"] .radio-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.value === cloud.provider);
+  });
+  const piePanel = $('piesocketConfig');
+  const customPanel = $('customConfig');
+  if (piePanel) piePanel.style.display = cloud.provider === 'piesocket' ? 'block' : 'none';
+  if (customPanel) customPanel.style.display = cloud.provider === 'custom' ? 'block' : 'none';
+})();
+
+const btnCloudConnect = $('btnCloudConnect');
+if (btnCloudConnect) {
+  btnCloudConnect.addEventListener('click', () => {
+    cloud.reconnectAttempts = 0;
+    if (cloud.reconnectTimer) clearTimeout(cloud.reconnectTimer);
+    if (cloud.ws && cloud.ws.readyState === 1) {
+      // Disconnect
+      cloud.ws.close();
+      cloud.ws = null;
+      updateCloudStatus('warn', '⊘ Disconnected');
+      $('cloudQrSection').style.display = 'none';
+      btnCloudConnect.textContent = '⚡ CONNECT TO RELAY';
+    } else {
+      if (connectCloudRelay()) {
+        btnCloudConnect.textContent = '⊘ DISCONNECT';
+      }
+    }
+  });
+}
+
+const btnCopyCloudUrl = $('btnCopyCloudUrl');
+if (btnCopyCloudUrl) {
+  btnCopyCloudUrl.addEventListener('click', async () => {
+    const url = buildCloudUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      btnCopyCloudUrl.textContent = '✓ COPIED!';
+      setTimeout(() => btnCopyCloudUrl.textContent = '📋 COPY CLOUD URL', 1500);
+    } catch {
+      prompt('Copy this URL:', url);
+    }
+  });
+}
+
+// ----- QR Code generation (simple QR using inline algorithm) -----
+function generateQR(text, canvas) {
+  // Use a minimal QR code generator via Google Charts API as fallback,
+  // or render a simple visual placeholder. To keep things working offline,
+  // we'll use a simple pattern + fallback to image API.
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, size, size);
+  // Try to load a QR via image
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, size, size);
+  };
+  img.onerror = () => {
+    // Fallback: draw a placeholder QR-like grid
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SCAN OR COPY URL', size/2, size/2 - 6);
+    ctx.fillText('BELOW', size/2, size/2 + 8);
+    // Draw QR-like decoration
+    for (let i = 0; i < 6; i++) {
+      ctx.fillRect(8 + i*8, 8, 5, 5);
+      ctx.fillRect(8, 8 + i*8, 5, 5);
+      ctx.fillRect(size-12 - i*8, 8, 5, 5);
+      ctx.fillRect(size-12, 8 + i*8, 5, 5);
+    }
+  };
+  // Use goqr.me API (a public free QR service)
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(text)}&margin=8`;
+}
+
+// ----- Connection mode toggle -----
+document.querySelectorAll('.conn-mode-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.conn-mode-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const mode = card.dataset.mode;
+    $('qrModePanel').style.display = mode === 'qr' ? 'block' : 'none';
+    const cloudPanel = $('cloudModePanel');
+    if (cloudPanel) cloudPanel.style.display = mode === 'cloud' ? 'block' : 'none';
+    $('castModePanel').style.display = mode === 'cast' ? 'block' : 'none';
+  });
+});
+
+// ----- Cast tab buttons -----
+function initCastTab() {
+  if (TV_DISPLAY_MODE) return;
+  const tvUrl = buildTvUrl();
+  const urlEl = $('qrUrl');
+  if (urlEl) urlEl.textContent = tvUrl;
+  const qrCnv = $('qrCanvas');
+  if (qrCnv) generateQR(tvUrl, qrCnv);
+}
+
+const btnCopyTvUrl = $('btnCopyTvUrl');
+if (btnCopyTvUrl) {
+  btnCopyTvUrl.addEventListener('click', async () => {
+    const url = buildTvUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      btnCopyTvUrl.textContent = '✓ COPIED!';
+      setTimeout(() => btnCopyTvUrl.textContent = '📋 COPY TV URL', 1500);
+    } catch {
+      prompt('Copy this URL:', url);
+    }
+  });
+}
+
+const btnTestBroadcast = $('btnTestBroadcast');
+if (btnTestBroadcast) {
+  btnTestBroadcast.addEventListener('click', () => {
+    if (!castChannel) {
+      $('castStatus').innerHTML = '<div style="color:var(--danger);">✗ Browser does not support BroadcastChannel. Use screen mirroring instead.</div>';
+      return;
+    }
+    castChannel.postMessage({ type: 'ping', session: TV_SESSION_ID, from: 'phone', t: Date.now() });
+    broadcastState();
+    setTimeout(() => {
+      if (castReceivers.size === 0) {
+        $('castStatus').innerHTML = '<div style="color:#ffb84a;">⚠ No TV responded. Make sure TV has the URL open in a browser on the SAME network/device.</div>';
+      }
+    }, 2000);
+  });
+}
+
+const btnOpenPreview = $('btnOpenPreview');
+if (btnOpenPreview) {
+  btnOpenPreview.addEventListener('click', () => {
+    window.open(buildTvUrl(), '_blank');
+  });
+}
+
+const btnTryNativeCast = $('btnTryNativeCast');
+if (btnTryNativeCast) {
+  btnTryNativeCast.addEventListener('click', async () => {
+    const statusEl = $('nativeCastStatus');
+    // Try Presentation API (Chromecast from Chrome)
+    if ('PresentationRequest' in window) {
+      try {
+        const pr = new PresentationRequest([buildTvUrl()]);
+        pr.start().then(conn => {
+          statusEl.innerHTML = '<span style="color:var(--accent);">✓ Cast session started</span>';
+        }).catch(err => {
+          statusEl.innerHTML = `<span style="color:var(--text-dim);">No cast device picker shown. Try Chrome menu → Cast manually. (${err.message})</span>`;
+        });
+      } catch (err) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">Cast API failed: ${err.message}</span>`;
+      }
+    } else if ('webkit' in window || 'WebKitPlaybackTargetAvailabilityEvent' in window) {
+      statusEl.innerHTML = '<span style="color:var(--text-dim);">iOS: Use Control Center → Screen Mirroring → select Apple TV.</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:var(--text-dim);">Browser cast API not available. Use phone\'s built-in screen mirror (see above).</span>';
+    }
+  });
+}
+
+// ============================================================
+// TV DISPLAY MODE - if URL has ?display=tv, render TV broadcast view
+// ============================================================
+function applyTvState(p) {
+  if (!p) return;
+  // Update live status indicator
+  const liveEl = $('tvLiveStatus');
+  if (liveEl) liveEl.textContent = cloud.connected ? 'LIVE • CLOUD' : 'LIVE';
+  $('tvMatchLabel').textContent = `MATCH — BEST OF ${p.matchLabel}` + (p.finished && p.winner !== null ? ` • ${p.players[p.winner].name.toUpperCase()} WINS` : '');
+  $('tvServeLabel').textContent = p.serveLabel || '';
+  // Player names
+  $('tvNameP1').textContent = p.players[0].name;
+  $('tvNameP2').textContent = p.players[1].name;
+  // Serving row
+  $('tvRowP1').classList.toggle('serving', p.serving === 0 && !p.finished);
+  $('tvRowP2').classList.toggle('serving', p.serving === 1 && !p.finished);
+  // Sets cells
+  const renderTvSets = (player, otherSets, el) => {
+    el.innerHTML = '';
+    const setsToShow = player.setsToShow;
+    for (let i = 0; i < setsToShow; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'tv-cell';
+      if (i < player.sets.length) {
+        cell.textContent = player.sets[i];
+        if (player.sets[i] > otherSets[i]) cell.classList.add('won');
+      } else {
+        cell.textContent = '–';
+        cell.classList.add('empty');
+      }
+      el.appendChild(cell);
+    }
+  };
+  renderTvSets(p.players[0], p.players[0].otherSets, $('tvSetsP1'));
+  renderTvSets(p.players[1], p.players[1].otherSets, $('tvSetsP2'));
+  $('tvGamesP1').textContent = p.players[0].games;
+  $('tvGamesP2').textContent = p.players[1].games;
+  $('tvPointP1').textContent = p.players[0].pointDisplay;
+  $('tvPointP2').textContent = p.players[1].pointDisplay;
+  // Stats
+  $('tvStatBounces').textContent = p.totalBounces;
+  $('tvStatIn').textContent = p.inCalls;
+  $('tvStatOut').textContent = p.outCalls;
+  // Verdict
+  if (p.lastVerdict) {
+    const vEl = $('tvVerdict');
+    vEl.textContent = p.lastVerdict;
+    vEl.className = 'tv-verdict-text ' + p.lastVerdict.toLowerCase();
+    $('tvVerdictMeta').textContent = p.lastShot ? `Last shot: ${p.lastShot.toUpperCase()}` : '';
+  }
+  // Session
+  $('tvSession').textContent = p.session;
+  // Save bounces for court render
+  tvBouncesCache = p.bounces || [];
+  drawTvCourtMap();
+}
+
+function applyTvBounce(bounce) {
+  // Pop bounce animation on verdict
+  const vEl = $('tvVerdict');
+  vEl.style.transform = 'scale(1.15)';
+  setTimeout(() => vEl.style.transform = 'scale(1)', 250);
+}
+
+let tvBouncesCache = [];
+function drawTvCourtMap() {
+  const cnv = $('tvCourtMap');
+  if (!cnv) return;
+  const W = cnv.clientWidth;
+  const H = cnv.clientHeight;
+  if (W === 0 || H === 0) return;
+  cnv.width = W * devicePixelRatio;
+  cnv.height = H * devicePixelRatio;
+  const ctx = cnv.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  // Court bg
+  ctx.fillStyle = '#2d6b3f';
+  ctx.fillRect(0, 0, W, H);
+  const pad = Math.min(W, H) * 0.08;
+  ctx.fillStyle = '#1a4a28';
+  ctx.fillRect(0, 0, W, pad);
+  ctx.fillRect(0, H - pad, W, pad);
+  ctx.fillRect(0, 0, pad, H);
+  ctx.fillRect(W - pad, 0, pad, H);
+  // Lines
+  ctx.strokeStyle = '#f4f1e8'; ctx.lineWidth = 3;
+  ctx.strokeRect(pad, pad, W - pad*2, H - pad*2);
+  const alley = (H - pad*2) * 0.08;
+  ctx.strokeRect(pad + alley, pad, W - pad*2 - alley*2, H - pad*2);
+  const sx1 = pad + (W - pad*2) * 0.25;
+  const sx2 = pad + (W - pad*2) * 0.75;
+  ctx.beginPath();
+  ctx.moveTo(sx1, pad + alley); ctx.lineTo(sx1, H - pad - alley);
+  ctx.moveTo(sx2, pad + alley); ctx.lineTo(sx2, H - pad - alley);
+  ctx.moveTo(sx1, H/2); ctx.lineTo(sx2, H/2);
+  ctx.stroke();
+  // Net
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(W/2, pad - 4); ctx.lineTo(W/2, H - pad + 4);
+  ctx.stroke();
+  // Bounces
+  tvBouncesCache.forEach((b, idx) => {
+    if (!b.court) return;
+    const recency = (tvBouncesCache.length - idx) / tvBouncesCache.length;
+    const alpha = 0.3 + 0.7 * recency;
+    let x = pad + Math.max(-0.1, Math.min(1.1, b.court.x)) * (W - pad*2);
+    let y = pad + Math.max(-0.1, Math.min(1.1, b.court.y)) * (H - pad*2);
+    ctx.fillStyle = b.verdict === 'IN' ? `rgba(212,255,58,${alpha})` : `rgba(255,71,87,${alpha})`;
+    ctx.strokeStyle = b.verdict === 'IN' ? '#d4ff3a' : '#ff4757';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, idx === tvBouncesCache.length - 1 ? 14 : 6, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    if (idx === tvBouncesCache.length - 1) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x-18, y); ctx.lineTo(x+18, y);
+      ctx.moveTo(x, y-18); ctx.lineTo(x, y+18);
+      ctx.stroke();
+    }
+  });
+}
+
+function updateTvClock() {
+  const el = $('tvClock');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString();
+}
+
+// ============================================================
+// Initialize TV mode if URL says so
+// ============================================================
+if (TV_DISPLAY_MODE) {
+  document.body.classList.add('tv-display');
+  initCastChannel();
+  // Announce we're ready via BroadcastChannel
+  if (castChannel) {
+    castChannel.postMessage({ type: 'hello', session: TV_SESSION_ID, from: 'tv', t: Date.now() });
+  }
+  // If cloud relay params in URL, auto-connect
+  if (URL_CLOUD_KEY || URL_CLOUD_WS) {
+    setTimeout(() => connectCloudRelay(true), 500);
+  }
+  setInterval(updateTvClock, 1000);
+  updateTvClock();
+  window.addEventListener('resize', drawTvCourtMap);
+  setTimeout(drawTvCourtMap, 100);
+  // Block all phone-side init below
+} else {
+  initCastChannel();
+  // Hook into score render & bounce register to broadcast to BOTH channels
+  const origRenderScore = renderScore;
+  renderScore = function() {
+    origRenderScore();
+    broadcastState();
+    broadcastStateCloud();
+  };
+  const origRegisterBounce = registerBounce;
+  registerBounce = function(pt) {
+    origRegisterBounce(pt);
+    if (state.bounces.length > 0) {
+      const latestBounce = state.bounces[state.bounces.length - 1];
+      broadcastBounce(latestBounce);
+      broadcastBounceCloud(latestBounce);
+    }
+    broadcastState();
+    broadcastStateCloud();
+  };
+  // Initial cast tab setup
+  setTimeout(initCastTab, 200);
+}
+
+// Init
+if (!TV_DISPLAY_MODE) initMatch();
+window.addEventListener('resize', () => { if (state.calibrating) renderCalibration(); drawCourtMap(); });
+drawCourtMap();
+
+// Register a tiny inline service worker for offline-ish behavior
+if ('serviceWorker' in navigator) {
+  const swCode = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());`;
+  try {
+    const blob = new Blob([swCode], {type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  } catch(e){}
+}
+</script>
+</body>
+</html>
